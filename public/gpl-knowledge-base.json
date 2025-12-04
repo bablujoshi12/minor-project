@@ -1,0 +1,243 @@
+{
+  "college": {
+    "name": "Government Polytechnic Lohaghat",
+    "hindiName": "राजकीय पॉलीटेक्निक लोहाघाट",
+    "established": "1975",
+    "location": {
+      "address": "Government Polytechnic, Lohaghat, Champawat, Uttarakhand - 262524",
+      "district": "Champawat",
+      "state": "Uttarakhand",
+      "pincode": "262524",
+      "coordinates": {
+        "lat": 29.4160459,
+        "lng": 80.0777467
+      }
+    },
+    "contact": {
+      "phone": "05965-234535",
+      "email": "prigplohag-dte@uk.gov.in",
+      "website": "https://www.gplohaghat.org.in/"
+    },
+    "history": {
+      "founded": "October 1975",
+      "initialLocation": "Fernhill, Pithoragarh district (rented buildings)",
+      "initialPrograms": [
+        {
+          "name": "Civil Engineering Diploma",
+          "duration": "3 years",
+          "seats": 30
+        },
+        {
+          "name": "Stenography & Secretarial Practice Diploma",
+          "duration": "2 years",
+          "seats": 30
+        }
+      ],
+      "milestones": [
+        {
+          "year": "1984-85",
+          "event": "Electrical Engineering Diploma program started with 30 seats"
+        },
+        {
+          "year": "1986-87",
+          "event": "Electrical Engineering replaced with Electronics Engineering Diploma (30 seats)"
+        }
+      ]
+    },
+    "vision": "To be known as an institute for developing proficient and technically expert diploma holders likely to be consumed in various disciplines of their trade.",
+    "mission": [
+      "M1 - To make an atmosphere of creative thinking and personality development.",
+      "M2 - To provide a suitable environment for students to develop effective communication skills and thinking ability.",
+      "M3 - To nurture ethical, competent, and sustainable values in students to make them self-responsible."
+    ]
+  },
+  "departments": [
+    {
+      "name": "Civil Engineering",
+      "hindiName": "सिविल इंजीनियरिंग",
+      "capacity": 135,
+      "duration": "3 years",
+      "description": "Infrastructure development, construction technology, and environmental engineering"
+    },
+    {
+      "name": "Electronics Engineering",
+      "hindiName": "इलेक्ट्रॉनिक्स इंजीनियरिंग",
+      "capacity": 60,
+      "duration": "3 years",
+      "description": "Electronic systems, embedded systems, and VLSI design"
+    },
+    {
+      "name": "Information Technology",
+      "hindiName": "सूचना प्रौद्योगिकी",
+      "capacity": 64,
+      "duration": "3 years",
+      "description": "Computer systems, networking, and software development"
+    },
+    {
+      "name": "Pharmacy",
+      "hindiName": "फार्मेसी",
+      "capacity": 75,
+      "duration": "3 years",
+      "description": "Pharmaceutical sciences, drug formulation, and health care"
+    },
+    {
+      "name": "Mechanical Engineering",
+      "hindiName": "मैकेनिकल इंजीनियरिंग",
+      "duration": "3 years",
+      "description": "Design, manufacturing, and automation systems"
+    }
+  ],
+  "facilities": [
+    "State-of-the-art laboratories with modern equipment",
+    "Wi-Fi enabled campus with 24/7 internet access",
+    "Central library with extensive books and digital resources",
+    "Auditorium with seating capacity of 500+",
+    "Hostel facilities with modern amenities",
+    "Cafeteria serving nutritious meals",
+    "Sports facilities and recreation areas",
+    "Medical facilities",
+    "Transportation services",
+    "NCC and NSS services"
+  ],
+  "services": [
+    {
+      "name": "Library Services",
+      "features": [
+        "Extensive collection of books & journals",
+        "Digital library access",
+        "24/7 online resources",
+        "Reading rooms & study spaces"
+      ]
+    },
+    {
+      "name": "Placement Services",
+      "features": [
+        "Career counseling",
+        "Industry connections",
+        "Internship opportunities",
+        "Mock interviews & workshops"
+      ]
+    },
+    {
+      "name": "Medical Facilities",
+      "features": [
+        "On-campus clinic",
+        "First aid services",
+        "Health awareness programs",
+        "Emergency medical support"
+      ]
+    },
+    {
+      "name": "Transportation",
+      "features": [
+        "Campus bus service",
+        "Vehicle parking facility",
+        "Safe transportation",
+        "City connectivity"
+      ]
+    },
+    {
+      "name": "Sports & Recreation",
+      "features": [
+        "Sports facilities",
+        "Gymnasium & fitness center",
+        "Annual sports events",
+        "Cultural activities"
+      ]
+    },
+    {
+      "name": "IT Services",
+      "features": [
+        "High-speed internet",
+        "Computer labs",
+        "E-learning platforms",
+        "Technical support"
+      ]
+    }
+  ],
+  "importantLinks": [
+    {
+      "name": "UBTE, Roorkee",
+      "url": "https://ubte.in"
+    },
+    {
+      "name": "Directorate, Srinagar",
+      "url": "https://dte.uk.gov.in"
+    },
+    {
+      "name": "AICTE",
+      "url": "https://www.aicte-india.org"
+    },
+    {
+      "name": "PCI",
+      "url": "https://www.pci.nic.in"
+    },
+    {
+      "name": "UBTER",
+      "url": "https://ubterex.in"
+    },
+    {
+      "name": "Student Results",
+      "url": "https://ubterex.in/Student/Login.aspx"
+    }
+  ],
+  "studentResources": [
+    "Admission",
+    "Student Rules",
+    "Study Material",
+    "Result Portal",
+    "Placement",
+    "Time Table",
+    "Scholarship",
+    "Syllabus",
+    "Uttarakhand PCI",
+    "Apprenticeship Board Kanpur",
+    "ONLINE SCHOLARSHIP SCHEME",
+    "SIFA",
+    "UBTER ON LINE SEMESTER EXAM FORM & RESULT",
+    "Uttarakhand Training & Employment",
+    "National Employment Service",
+    "Sarkari Naukri",
+    "Employment News",
+    "Uttarakhand Public Service Commission"
+  ],
+  "principal": {
+    "name": "Dharmendra Prakash",
+    "title": "Principal",
+    "message": "It is my great pleasure to welcome you all to Government Polytechnic Lohaghat. We inculcate an attitude amongst our students, which transcends the young minds, from job seekers to service providers. The environment of learning in the campus makes our students, necessary ingredient for building technically strong community, ethically and morally rich and responsible citizen with compassionate human value. Autonomy and self empowerment are the two keywords in this campus. Thanks to all of you to visit this website."
+  },
+  "events": [
+    {
+      "name": "संस्था स्तरीय क्रीड़ा प्रतियोगिता 2024",
+      "englishName": "Institute Level Sports Competition 2024",
+      "type": "Sports"
+    },
+    {
+      "name": "JEEP 2025 AWARNESS - GPL",
+      "type": "Awareness Program"
+    },
+    {
+      "name": "संस्था स्तरीय काउन्सलिंग कार्यक्रम - 2025",
+      "englishName": "Institute Level Counseling Program - 2025",
+      "type": "Counseling"
+    }
+  ],
+  "admission": {
+    "year": "2025-2026",
+    "contactNumber": "9411138143",
+    "process": "QR CODE scan or fill form through link and contact for guidance",
+    "email": "gplpoly1975@gmail.com"
+  },
+  "notices": [
+    "संस्था वेबसाइट https://www.gplohaghat.org.in का नियमित रूप से अवलोकन करते रहे",
+    "डाक द्वारा अभिलेख प्राप्त करने का आवेदन पत्र",
+    "MEDICAL FORMAT",
+    "संस्था यूनिफार्म शैक्षिक सत्र 2025-26",
+    "उत्तराखंड प्राविधिक शिक्षा परिषद् (छात्र विनियमावली 2016)",
+    "FEE STRUCTURE",
+    "संस्था स्तरीय काउन्सलिंग कार्यक्रम - 2025",
+    "SCHOLARSHIP LETTER 2025-26",
+    "अज़ीम प्रेम जी scholarship"
+  ]
+}
+

@@ -1,0 +1,87 @@
+.college-logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.college-logo-svg {
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(30, 58, 138, 0.2));
+}
+
+/* Animation for logo */
+.college-logo-container.animated .gear-outer {
+  animation: rotateGear 10s linear infinite;
+  transform-origin: center center;
+}
+
+.college-logo-container.animated .compass-group {
+  animation: pulseCompass 2s ease-in-out infinite;
+}
+
+.college-logo-container.animated .college-logo-svg {
+  animation: floatLogo 3s ease-in-out infinite;
+}
+
+/* Rotating Gear Animation */
+@keyframes rotateGear {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Pulse Compass Animation */
+@keyframes pulseCompass {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+/* Float Logo Animation */
+@keyframes floatLogo {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Banner Fade In */
+@keyframes fadeInBanner {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover Effects */
+.college-logo-container:hover .gear-outer {
+  animation-duration: 4s;
+}
+
+.college-logo-container:hover .compass-group {
+  animation-duration: 1s;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .college-logo-svg {
+    filter: drop-shadow(0 1px 4px rgba(30, 58, 138, 0.15));
+  }
+}
+

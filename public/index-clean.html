@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Campus | Government Polytechnic, Lohaghat</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container nav">
+            <div class="brand">
+                <span class="logo">🏛️</span>
+                <div>
+                    <h2>Government Polytechnic, Lohaghat</h2>
+                    <p class="subtitle">Smart Campus Portal</p>
+                </div>
+            </div>
+            <nav class="navbar">
+                <a href="index.html" class="active">Home</a>
+                <a href="services.html">Services</a>
+                <a href="contact.html">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <span class="badge">✨ Smart Campus Portal</span>
+                    <h1>Welcome to Our Polytechnic</h1>
+                    <p>Explore departments, events, and essential campus services. Get instant answers from CampusBot.</p>
+                    <a href="#events" class="btn-primary">View Events</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-box">
+                        <div class="stat-icon">🎓</div>
+                        <h3>1200+</h3>
+                        <p>Students</p>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">👨‍🏫</div>
+                        <h3>50+</h3>
+                        <p>Faculty</p>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">📚</div>
+                        <h3>8</h3>
+                        <p>Departments</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="container">
+                <h2 class="section-title">Key Features</h2>
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-icon">📖</div>
+                        <h3>Admissions</h3>
+                        <p>Complete eligibility, process, and timelines. Get guidance from our helpdesk.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">💼</div>
+                        <h3>Placements</h3>
+                        <p>Active Training & Placement Cell with regular drives and workshops.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">📚</div>
+                        <h3>Library</h3>
+                        <p>Extended hours, digital resources, and expert support for research.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="departments">
+            <div class="container">
+                <h2 class="section-title">Our Departments</h2>
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-icon">💻</div>
+                        <h3>Computer Engineering</h3>
+                        <p>Cutting-edge curriculum covering programming and emerging technologies.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🔧</div>
+                        <h3>Mechanical Engineering</h3>
+                        <p>Comprehensive training in design and manufacturing systems.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">⚡</div>
+                        <h3>Electrical Engineering</h3>
+                        <p>Focus on power systems, electronics, and electrical circuits.</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon">🏗️</div>
+                        <h3>Civil Engineering</h3>
+                        <p>Infrastructure development and construction technology.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="events" class="events">
+            <div class="container">
+                <h2 class="section-title">Upcoming Events</h2>
+                <div class="grid">
+                    <div class="card">
+                        <h3>Hackathon 2025</h3>
+                        <p class="date">📅 Nov 12, Auditorium</p>
+                        <p>48-hour coding challenge with exciting prizes.</p>
+                    </div>
+                    <div class="card">
+                        <h3>IoT Workshop</h3>
+                        <p class="date">📅 Nov 20, ECE Lab</p>
+                        <p>Hands-on with sensors and microcontrollers.</p>
+                    </div>
+                    <div class="card">
+                        <h3>Career Fair</h3>
+                        <p class="date">📅 Dec 05, Sports Complex</p>
+                        <p>Meet recruiters and alumni mentors.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; <span id="year"></span> Government Polytechnic, Lohaghat. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Chatbot -->
+    <div class="chatbot-fab" id="chatbotFab">💬</div>
+    <div class="chatbot-panel" id="chatbotPanel">
+        <div class="chatbot-header">
+            <h3>CampusBot</h3>
+            <button onclick="toggleChatbot()">✕</button>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="message bot">Hello! How can I help you today?</div>
+        </div>
+        <div class="chatbot-input">
+            <input type="text" id="chatInput" placeholder="Type your message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+        
+        function toggleChatbot() {
+            const panel = document.getElementById('chatbotPanel');
+            panel.classList.toggle('show');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const messagesDiv = document.getElementById('chatbotMessages');
+            messagesDiv.innerHTML += `<div class="message user">${message}</div>`;
+            
+            setTimeout(() => {
+                messagesDiv.innerHTML += `<div class="message bot">Thanks for your message! Our team will get back to you soon.</div>`;
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }, 500);
+
+            input.value = '';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        document.getElementById('chatbotFab').addEventListener('click', toggleChatbot);
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
+

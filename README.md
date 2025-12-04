@@ -1,4 +1,30 @@
-# Getting Started with Create React App
+# UnfairAGI - Intelligent Chatbot
+
+UnfairAGI is a modern, intelligent chatbot application built with React that provides better answers to user questions. It features a sleek dark-themed interface with purple and blue glow effects, voice search capabilities, and an integrated code editor.
+
+## Features
+
+- 🤖 **Intelligent Chat Interface**: Clean, modern chat UI with user and AI message bubbles
+- 🎤 **Voice Search**: Click the microphone button to ask questions using voice input
+- 💻 **Code Editor**: Integrated code editor with syntax highlighting and line numbers
+- 🖥️ **Terminal Output**: Real-time terminal output display
+- 🎨 **Modern UI**: Dark theme with purple/blue glow effects and circuit board patterns
+- 📱 **Responsive Design**: Works on desktop, tablet, and mobile devices
+- ⚡ **Real-time Interaction**: Instant responses and smooth animations
+
+## Voice Search
+
+UnfairAGI includes voice search functionality using the Web Speech API. To use voice search:
+
+1. Click the microphone button (🎤) in the input area
+2. Allow microphone permissions when prompted
+3. Speak your question clearly
+4. The transcribed text will appear in the input field
+5. Press Enter or click the send button to submit
+
+**Note**: Voice search works best in Chrome and Edge browsers. Make sure you have a working microphone and stable internet connection.
+
+## Getting Started
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

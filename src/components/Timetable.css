@@ -1,0 +1,339 @@
+.timetable-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f9fafb, #ffffff);
+  padding: 2rem 0;
+}
+
+.timetable-hero {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-bottom: 2rem;
+}
+
+.timetable-hero h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+}
+
+.timetable-hero p {
+  font-size: 1.2rem;
+  opacity: 0.95;
+  margin: 0;
+}
+
+/* Branches Section */
+.branches-section,
+.years-section,
+.timetable-section {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 2rem 0;
+  text-align: center;
+}
+
+.branches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.branch-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #e5e7eb;
+  position: relative;
+  overflow: hidden;
+}
+
+.branch-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.branch-card:hover::before {
+  transform: scaleX(1);
+}
+
+.branch-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.branch-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.branch-card h3 {
+  font-size: 1.3rem;
+  color: #111827;
+  margin: 0.5rem 0;
+}
+
+.branch-code {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.branch-arrow {
+  position: absolute;
+  bottom: 1rem;
+  right: 1.5rem;
+  font-size: 1.5rem;
+  color: #667eea;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.branch-card:hover .branch-arrow {
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+/* Years Section */
+.years-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.year-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid #e5e7eb;
+  position: relative;
+}
+
+.year-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+  background: linear-gradient(135deg, #f9fafb, #ffffff);
+}
+
+.year-number {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 0.5rem;
+}
+
+.year-card h3 {
+  font-size: 1.2rem;
+  color: #111827;
+  margin: 0;
+}
+
+.year-arrow {
+  position: absolute;
+  bottom: 1rem;
+  right: 1.5rem;
+  font-size: 1.5rem;
+  color: #667eea;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.year-card:hover .year-arrow {
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+/* Back Button */
+.back-btn {
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  color: #374151;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #e5e7eb;
+  border-color: #667eea;
+  color: #667eea;
+  transform: translateX(-5px);
+}
+
+/* Timetable Section */
+.timetable-header {
+  margin-bottom: 2rem;
+}
+
+.timetable-wrapper {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  overflow-x: auto;
+}
+
+.timetable-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  min-width: 1200px;
+}
+
+.day-column {
+  background: #f9fafb;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.day-header {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 1rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.day-slots {
+  padding: 0.5rem;
+}
+
+.time-slot {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid #667eea;
+  transition: all 0.2s ease;
+}
+
+.time-slot:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.lecture-slot {
+  border-left-color: #667eea;
+}
+
+.practical-slot {
+  border-left-color: #10b981;
+  background: #f0fdf4;
+}
+
+.break-slot {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.slot-time {
+  font-size: 0.85rem;
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.slot-subject {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.slot-teacher {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.slot-room {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.no-timetable {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+  font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .timetable-grid {
+    grid-template-columns: 1fr;
+    min-width: 100%;
+  }
+
+  .day-column {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .timetable-hero h1 {
+    font-size: 2rem;
+  }
+
+  .timetable-hero p {
+    font-size: 1rem;
+  }
+
+  .branches-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .years-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .timetable-wrapper {
+    padding: 1rem;
+  }
+
+  .time-slot {
+    padding: 0.75rem;
+  }
+}
+
