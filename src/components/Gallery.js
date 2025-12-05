@@ -193,6 +193,8 @@ const Gallery = () => {
                 src={image.src}
                 alt={image.alt}
                 loading="lazy"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
                 onLoad={(e) => {
                   e.target.classList.add('loaded');
                 }}
@@ -230,6 +232,7 @@ const Gallery = () => {
               alt={selectedImage.alt}
               className="lightbox-image"
               crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 if (!e.target.dataset.fallbackUsed) {
                   e.target.dataset.fallbackUsed = 'true';

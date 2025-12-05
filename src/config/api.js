@@ -13,6 +13,7 @@ const api = {
   // Student endpoints
   student: {
     uploadAssignment: `${API_BASE_URL}/student/upload-assignment`,
+    submitAssignment: `${API_BASE_URL}/student/submit-assignment`,
     attendanceDashboard: `${API_BASE_URL}/student/attendance-dashboard`,
     testMarks: `${API_BASE_URL}/student/test-marks`,
     semesterResults: `${API_BASE_URL}/student/semester-results`,
@@ -26,6 +27,8 @@ const api = {
   teacher: {
     students: `${API_BASE_URL}/teacher/students`,
     assignments: `${API_BASE_URL}/teacher/assignments`,
+    assignmentsWithCounts: `${API_BASE_URL}/teacher/assignments-with-counts`,
+    assignmentSubmissions: `${API_BASE_URL}/teacher/assignment-submissions`,
     updateAssignment: `${API_BASE_URL}/teacher/assignments`,
     attendanceGraph: `${API_BASE_URL}/teacher/attendance-graph`,
     insertAttendance: `${API_BASE_URL}/teacher/attendance`,
@@ -51,14 +54,46 @@ const api = {
   
   // Admin endpoints
   admin: {
-    teachers: `${API_BASE_URL}/admin/teachers`,
-    students: `${API_BASE_URL}/admin/students`,
-    parents: `${API_BASE_URL}/admin/parents`,
+    // Statistics
     statistics: `${API_BASE_URL}/admin/statistics`,
+    statisticsEnhanced: `${API_BASE_URL}/admin/statistics/enhanced`,
+    // Students
+    students: `${API_BASE_URL}/admin/students`,
+    studentById: (id) => `${API_BASE_URL}/admin/students/${id}`,
+    createStudent: `${API_BASE_URL}/admin/students`,
+    updateStudent: (id) => `${API_BASE_URL}/admin/students/${id}`,
+    deleteStudent: (id) => `${API_BASE_URL}/admin/user/student/${id}`,
+    // Teachers
+    teachers: `${API_BASE_URL}/admin/teachers`,
+    teacherById: (id) => `${API_BASE_URL}/admin/teachers/${id}`,
+    createTeacher: `${API_BASE_URL}/admin/teachers`,
+    updateTeacher: (id) => `${API_BASE_URL}/admin/teachers/${id}`,
+    deleteTeacher: (id) => `${API_BASE_URL}/admin/user/teacher/${id}`,
+    // Parents
+    parents: `${API_BASE_URL}/admin/parents`,
+    deleteParent: (id) => `${API_BASE_URL}/admin/user/parent/${id}`,
+    // Departments
+    departments: `${API_BASE_URL}/admin/departments`,
+    departmentById: (id) => `${API_BASE_URL}/admin/departments/${id}`,
+    createDepartment: `${API_BASE_URL}/admin/departments`,
+    updateDepartment: (id) => `${API_BASE_URL}/admin/departments/${id}`,
+    deleteDepartment: (id) => `${API_BASE_URL}/admin/departments/${id}`,
+    // Branches
+    branches: `${API_BASE_URL}/admin/branches`,
+    createBranch: `${API_BASE_URL}/admin/branches`,
+    updateBranch: (id) => `${API_BASE_URL}/admin/branches/${id}`,
+    deleteBranch: (id) => `${API_BASE_URL}/admin/branches/${id}`,
+    // HOD Management
+    hods: `${API_BASE_URL}/admin/hods`,
+    assignHOD: `${API_BASE_URL}/admin/hods/assign`,
+    removeHOD: (departmentId) => `${API_BASE_URL}/admin/hods/${departmentId}`,
+    // Notices
     sendNotice: `${API_BASE_URL}/admin/send-notice`,
     notices: `${API_BASE_URL}/admin/notices`,
-    deleteUser: (type, id) => `${API_BASE_URL}/admin/user/${type}/${id}`,
-    branches: `${API_BASE_URL}/admin/branches`
+    updateNotice: (id) => `${API_BASE_URL}/admin/notices/${id}`,
+    deleteNotice: (id) => `${API_BASE_URL}/admin/notices/${id}`,
+    // Legacy
+    deleteUser: (type, id) => `${API_BASE_URL}/admin/user/${type}/${id}`
   },
   
   // Departments
@@ -127,6 +162,13 @@ const api = {
     add: `${API_BASE_URL}/ncc/students`,
     update: (id) => `${API_BASE_URL}/ncc/students/${id}`,
     delete: (id) => `${API_BASE_URL}/ncc/students/${id}`
+  },
+  
+  // Subjects endpoints
+  subjects: {
+    getAll: `${API_BASE_URL}/subjects`,
+    getBySemester: (semester) => `${API_BASE_URL}/subjects/semester/${semester}`,
+    getById: (id) => `${API_BASE_URL}/subjects/${id}`
   }
 };
 

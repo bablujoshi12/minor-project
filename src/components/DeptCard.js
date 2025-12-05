@@ -65,24 +65,32 @@ const DeptCard = ({ dept, idx, animateCards }) => {
             </div>
 
             <div className="modal-section">
-              <h3>👨‍🏫 Faculty Members ({dept.teachers})</h3>
+              <h3>👨‍🏫 Faculty Members ({facultyList.length > 0 ? facultyList.length : dept.teachers})</h3>
               <div className="faculty-list">
-                {facultyList.map((faculty, i) => (
-                  <div key={i} className="faculty-item">
-                    {faculty}
-                  </div>
-                ))}
+                {facultyList.length > 0 ? (
+                  facultyList.map((faculty, i) => (
+                    <div key={i} className="faculty-item">
+                      {faculty}
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-data-message">Faculty details will be updated soon.</div>
+                )}
               </div>
             </div>
 
             <div className="modal-section">
               <h3>🎓 Students by Year ({dept.students}+ Total)</h3>
               <div className="students-list">
-                {studentList.map((batch, i) => (
-                  <div key={i} className="batch-item">
-                    {batch}
-                  </div>
-                ))}
+                {studentList.length > 0 ? (
+                  studentList.map((batch, i) => (
+                    <div key={i} className="batch-item">
+                      {batch}
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-data-message">Student details will be updated soon.</div>
+                )}
               </div>
             </div>
           </div>

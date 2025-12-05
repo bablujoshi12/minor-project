@@ -43,53 +43,25 @@ const StudentDashboard = () => {
     }
   };
 
-  // Demo/Fallback data functions - Initialize immediately
-  const getDemoProfile = (currentUserData) => {
-    const currentUser = user || currentUserData || getUserData();
+  // Initialize with empty/real-first data
+  const getInitialProfile = () => {
+    const currentUser = user || getUserData();
     return {
-      roll_no: currentUser?.email?.split('@')[0]?.toUpperCase() || currentUser?.roll_no || 'STU23001',
-      name: currentUser?.name || 'Student Name',
-      branch: currentUser?.branch || 'Information Technology',
-      year: currentUser?.year || 3,
-      section: currentUser?.section || 'A',
-      email: currentUser?.email || 'student@example.com',
-      phone: currentUser?.phone || '+91-9876543210'
+      roll_no: currentUser?.roll_no || currentUser?.email?.split('@')[0]?.toUpperCase() || '',
+      name: currentUser?.name || '',
+      branch: currentUser?.branch || '',
+      year: currentUser?.year || '',
+      section: currentUser?.section || '',
+      email: currentUser?.email || '',
+      phone: currentUser?.phone || ''
     };
   };
 
-  const getDemoAttendance = () => ({
-    totalDays: 180,
-    presentDays: 165,
-    absentDays: 15,
-    percentage: 91.67,
-    monthlyData: [
-      { month: 'Jan', present_days: 22, total_days: 24 },
-      { month: 'Feb', present_days: 20, total_days: 22 },
-      { month: 'Mar', present_days: 24, total_days: 25 },
-      { month: 'Apr', present_days: 21, total_days: 23 },
-      { month: 'May', present_days: 23, total_days: 24 },
-      { month: 'Jun', present_days: 22, total_days: 24 }
-    ]
-  });
-
-  const getDemoTestMarks = () => [
-    { subject: 'Data Structures', marks: 85, maxMarks: 100, percentage: 85, test_name: 'Mid-Term', exam_date: '2024-03-15' },
-    { subject: 'Database Systems', marks: 92, maxMarks: 100, percentage: 92, test_name: 'Unit Test', exam_date: '2024-03-20' },
-    { subject: 'Web Development', marks: 88, maxMarks: 100, percentage: 88, test_name: 'Practical', exam_date: '2024-03-25' },
-    { subject: 'Operating Systems', marks: 79, maxMarks: 100, percentage: 79, test_name: 'Mid-Term', exam_date: '2024-04-01' }
-  ];
-
-  const getDemoSemesterResults = () => [
-    { semester: '3rd', percentage: 87.5, status: 'passed' },
-    { semester: '4th', percentage: 89.2, status: 'passed' },
-    { semester: '5th', percentage: 91.0, status: 'passed' }
-  ];
-
-  // Initialize with demo data immediately
-  const [profile, setProfile] = useState(() => getDemoProfile());
-  const [attendance, setAttendance] = useState(() => getDemoAttendance());
-  const [testMarks, setTestMarks] = useState(() => getDemoTestMarks());
-  const [semesterResults, setSemesterResults] = useState(() => getDemoSemesterResults());
+  const [profile, setProfile] = useState(() => getInitialProfile());
+  const [attendance, setAttendance] = useState(null);
+  const [testMarks, setTestMarks] = useState([]);
+  const [semesterResults, setSemesterResults] = useState([]);
+  const [semesterFilter, setSemesterFilter] = useState('');
   const [assignmentFile, setAssignmentFile] = useState(null);
   const [assignmentTitle, setAssignmentTitle] = useState('');
   const [assignmentSubject, setAssignmentSubject] = useState('');
@@ -101,8 +73,7 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     // Update profile when user data is available
-    const updatedProfile = getDemoProfile();
-    setProfile(updatedProfile);
+    setProfile(getInitialProfile());
     loadStudentData();
     loadNotices();
     loadTeacherAssignments();
@@ -126,8 +97,8 @@ const StudentDashboard = () => {
           health_issues: profileData.data.health_issues || ''
         });
       } else {
-        // Use fallback profile
-        setProfile(getDemoProfile(null));
+        // keep existing profile (no random fallback)
+        setProfile(prev => ({ ...prev }));
       }
 
       // Load attendance
@@ -138,9 +109,11 @@ const StudentDashboard = () => {
         const attData = await attRes.json();
         if (attData.success && attData.data) {
           setAttendance(attData.data);
+        } else {
+          setAttendance(null);
         }
       } catch (err) {
-        console.log('Using demo attendance data');
+        setAttendance(null);
       }
 
       // Load test marks
@@ -149,11 +122,13 @@ const StudentDashboard = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const marksData = await marksRes.json();
-        if (marksData.success && marksData.data && marksData.data.length > 0) {
+        if (marksData.success && Array.isArray(marksData.data)) {
           setTestMarks(marksData.data);
+        } else {
+          setTestMarks([]);
         }
       } catch (err) {
-        console.log('Using demo test marks');
+        setTestMarks([]);
       }
 
       // Load semester results
@@ -162,11 +137,13 @@ const StudentDashboard = () => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const resultsData = await resultsRes.json();
-        if (resultsData.success && resultsData.data && resultsData.data.length > 0) {
+        if (resultsData.success && Array.isArray(resultsData.data)) {
           setSemesterResults(resultsData.data);
+        } else {
+          setSemesterResults([]);
         }
       } catch (err) {
-        console.log('Using demo semester results');
+        setSemesterResults([]);
       }
 
     } catch (error) {
@@ -240,6 +217,7 @@ const StudentDashboard = () => {
     }
   };
 
+
   const updateHealthInfo = async () => {
     try {
       const response = await fetch(api.student.updateHealthInfo, {
@@ -266,11 +244,13 @@ const StudentDashboard = () => {
     navigate('/');
   };
 
-  // Use profile or fallback - always show data (define before use)
-  const displayProfile = profile || getDemoProfile(null);
-  const displayAttendance = attendance || getDemoAttendance();
-  const displayTestMarks = testMarks.length > 0 ? testMarks : getDemoTestMarks();
-  const displaySemesterResults = semesterResults.length > 0 ? semesterResults : getDemoSemesterResults();
+  // Use profile; if missing, keep empty object (no demo fallback)
+  const displayProfile = profile || {};
+  // Use real attendance from DB, no demo fallback
+  const displayAttendance = attendance || { totalDays: 0, presentDays: 0, absentDays: 0, percentage: 0, monthlyData: [], dailyData: [] };
+  // Use real marks from DB, only fallback to demo if no data
+  const displayTestMarks = testMarks.length > 0 ? testMarks : [];
+  const displaySemesterResults = semesterResults.length > 0 ? semesterResults : [];
 
   // Attendance Chart Data (define after displayAttendance)
   const attendanceChartData = displayAttendance.monthlyData ? {
@@ -348,24 +328,53 @@ const StudentDashboard = () => {
         <h2>📊 Attendance Dashboard</h2>
         <div className="attendance-stats">
           <div className="stat-box">
-            <div className="stat-value">{displayAttendance.totalDays}</div>
+            <div className="stat-value">{displayAttendance.totalDays || 0}</div>
             <div className="stat-label">Total Days</div>
           </div>
           <div className="stat-box stat-box-success">
-            <div className="stat-value">{displayAttendance.presentDays}</div>
+            <div className="stat-value">{displayAttendance.presentDays || 0}</div>
             <div className="stat-label">Present Days</div>
           </div>
           <div className="stat-box stat-box-warning">
-            <div className="stat-value">{displayAttendance.absentDays}</div>
+            <div className="stat-value">{displayAttendance.absentDays || 0}</div>
             <div className="stat-label">Absent Days</div>
           </div>
           <div className="stat-box highlight">
-            <div className="stat-value">{displayAttendance.percentage}%</div>
+            <div className="stat-value">{displayAttendance.percentage || 0}%</div>
             <div className="stat-label">Attendance %</div>
           </div>
         </div>
-        {displayAttendance.monthlyData && attendanceChartData && (
-          <div className="chart-container">
+        {displayAttendance.attendance && displayAttendance.attendance.length > 0 && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <h3 style={{ marginBottom: '1rem' }}>Recent Attendance (Last 30 Days)</h3>
+            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayAttendance.attendance.slice(0, 30).map((att, idx) => (
+                    <tr key={idx}>
+                      <td>{new Date(att.date).toLocaleDateString()}</td>
+                      <td>
+                        <span className={`status-badge ${att.status === 'present' ? 'success' : att.status === 'absent' ? 'error' : 'warning'}`}>
+                          {att.status || 'N/A'}
+                        </span>
+                      </td>
+                      <td>{att.remarks || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {displayAttendance.monthlyData && displayAttendance.monthlyData.length > 0 && attendanceChartData && (
+          <div className="chart-container" style={{ marginTop: '1.5rem' }}>
             <Line data={attendanceChartData} options={{
               responsive: true,
               maintainAspectRatio: false,
@@ -386,6 +395,9 @@ const StudentDashboard = () => {
               }
             }} />
           </div>
+        )}
+        {(!displayAttendance.attendance || displayAttendance.attendance.length === 0) && (
+          <p style={{ marginTop: '1rem', color: '#6b7280' }}>No attendance records available</p>
         )}
       </div>
 
@@ -408,29 +420,16 @@ const StudentDashboard = () => {
               {displayTestMarks.map((mark, idx) => (
                 <tr key={idx}>
                   <td><strong>{mark.subject}</strong></td>
-                  <td>{mark.test_name || 'Mid-Term'}</td>
-                  <td>{mark.marks_obtained || mark.marks}</td>
-                  <td>{mark.total_marks || mark.maxMarks}</td>
+                  <td>{mark.test_name || mark.exam_type || 'Exam'}</td>
+                  <td>{mark.marks_obtained || 0}</td>
+                  <td>{mark.total_marks || mark.max_marks || 100}</td>
                   <td><span className={`percentage-badge ${(() => {
-                    let pct = mark.percentage;
-                    if (!pct) {
-                      const marks = mark.marks_obtained || mark.marks || 0;
-                      const max = mark.total_marks || mark.maxMarks || 100;
-                      pct = (marks / max) * 100;
-                    }
+                    const pct = mark.percentage || ((mark.marks_obtained / (mark.total_marks || mark.max_marks || 100)) * 100);
                     return pct >= 80 ? 'high' : pct >= 60 ? 'medium' : 'low';
                   })()}`}>
-                    {(() => {
-                      let pct = mark.percentage;
-                      if (!pct) {
-                        const marks = mark.marks_obtained || mark.marks || 0;
-                        const max = mark.total_marks || mark.maxMarks || 100;
-                        pct = max > 0 ? (marks / max) * 100 : 0;
-                      }
-                      return pct.toFixed(1) + '%';
-                    })()}
+                    {(mark.percentage || ((mark.marks_obtained / (mark.total_marks || mark.max_marks || 100)) * 100)).toFixed(1)}%
                   </span></td>
-                  <td>{mark.exam_date || 'N/A'}</td>
+                  <td>{mark.exam_date ? new Date(mark.exam_date).toLocaleDateString() : 'N/A'}</td>
                 </tr>
               ))}
             </tbody>
@@ -444,15 +443,27 @@ const StudentDashboard = () => {
       <div className="dashboard-card">
         <h2>🏆 Semester Results</h2>
         {displaySemesterResults.length > 0 ? (
-          <div className="results-grid">
-            {displaySemesterResults.map((result, idx) => (
-              <div key={idx} className="result-card">
-                <h3>{result.semester} Semester</h3>
-                <div className="result-percentage">{result.percentage}%</div>
-                <div className={`result-status ${result.status || 'passed'}`}>{(result.status || 'passed').toUpperCase()}</div>
-              </div>
-            ))}
-          </div>
+          <>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <select value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
+                <option value="">All Semesters</option>
+                {[1,2,3,4,5,6].map(sem => (
+                  <option key={sem} value={sem}>Semester {sem}</option>
+                ))}
+              </select>
+            </div>
+            <div className="results-grid">
+              {displaySemesterResults
+                .filter(r => !semesterFilter || String(r.semester_num || r.semester) === String(semesterFilter))
+                .map((result, idx) => (
+                  <div key={idx} className="result-card">
+                    <h3>{result.semester} Semester</h3>
+                    <div className="result-percentage">{result.percentage}%</div>
+                    <div className={`result-status ${result.status || 'passed'}`}>{(result.status || 'passed').toUpperCase()}</div>
+                  </div>
+                ))}
+            </div>
+          </>
         ) : (
           <p className="no-data-message">📊 No semester results available yet</p>
         )}
@@ -541,34 +552,265 @@ const StudentDashboard = () => {
 
       {/* Assignments from Teachers */}
       <div className="dashboard-card">
-        <h2>📝 Assignments from Teachers</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2>📝 My Assignments</h2>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <span style={{ 
+              padding: '0.5rem 1rem', 
+              background: '#eff6ff', 
+              color: '#3b82f6', 
+              borderRadius: '4px',
+              fontWeight: '500',
+              fontSize: '0.875rem'
+            }}>
+              Total: {teacherAssignments.length}
+            </span>
+            <span style={{ 
+              padding: '0.5rem 1rem', 
+              background: '#f0fdf4', 
+              color: '#10b981', 
+              borderRadius: '4px',
+              fontWeight: '500',
+              fontSize: '0.875rem'
+            }}>
+              Submitted: {teacherAssignments.filter(a => a.is_submitted).length}
+            </span>
+            <span style={{ 
+              padding: '0.5rem 1rem', 
+              background: '#fef2f2', 
+              color: '#ef4444', 
+              borderRadius: '4px',
+              fontWeight: '500',
+              fontSize: '0.875rem'
+            }}>
+              Pending: {teacherAssignments.filter(a => !a.is_submitted).length}
+            </span>
+          </div>
+        </div>
+        
         {teacherAssignments.length > 0 ? (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Subject</th>
-                <th>Due Date</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teacherAssignments.map(assignment => (
-                <tr key={assignment.id}>
-                  <td><strong>{assignment.title}</strong></td>
-                  <td>{assignment.subject || '-'}</td>
-                  <td>{assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : '-'}</td>
-                  <td>
-                    {assignment.file_url && (
-                      <a href={assignment.file_url} target="_blank" rel="noopener noreferrer">Download</a>
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            {teacherAssignments.map(assignment => {
+              const isOverdue = assignment.due_date && new Date(assignment.due_date) < new Date() && !assignment.is_submitted;
+              
+              return (
+                <div key={assignment.id} style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '1.5rem',
+                  background: assignment.is_submitted ? '#f0fdf4' : (isOverdue ? '#fef2f2' : 'white'),
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  borderLeft: `4px solid ${assignment.is_submitted ? '#10b981' : (isOverdue ? '#ef4444' : '#3b82f6')}`
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 0.5rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
+                        {assignment.title}
+                      </h3>
+                      {assignment.teacher_name && (
+                        <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                          👨‍🏫 Teacher: <strong>{assignment.teacher_name}</strong>
+                        </p>
+                      )}
+                      {assignment.description && (
+                        <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5' }}>
+                          {assignment.description}
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                        {assignment.subject && (
+                          <span style={{ 
+                            padding: '0.25rem 0.75rem', 
+                            background: '#eff6ff', 
+                            color: '#3b82f6',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            fontWeight: '500'
+                          }}>
+                            📚 {assignment.subject}
+                          </span>
+                        )}
+                        {assignment.due_date && (
+                          <span style={{ 
+                            padding: '0.25rem 0.75rem', 
+                            background: isOverdue ? '#fee2e2' : '#fef3c7', 
+                            color: isOverdue ? '#dc2626' : '#92400e',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            fontWeight: '500'
+                          }}>
+                            📅 Due: {new Date(assignment.due_date).toLocaleDateString()}
+                            {isOverdue && <span style={{ marginLeft: '0.5rem' }}>⚠️ Overdue</span>}
+                          </span>
+                        )}
+                        {assignment.is_submitted && assignment.submission_date && (
+                          <span style={{ 
+                            padding: '0.25rem 0.75rem', 
+                            background: '#d1fae5', 
+                            color: '#065f46',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            fontWeight: '500'
+                          }}>
+                            ✅ Submitted: {new Date(assignment.submission_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ 
+                      padding: '0.75rem 1rem',
+                      background: assignment.is_submitted ? '#10b981' : (isOverdue ? '#ef4444' : '#3b82f6'),
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      textAlign: 'center',
+                      minWidth: '120px'
+                    }}>
+                      {assignment.is_submitted ? '✅ Submitted' : (isOverdue ? '⚠️ Overdue' : '⏳ Pending')}
+                    </div>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '0.75rem', 
+                    alignItems: 'center',
+                    marginTop: '1rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid #e5e7eb'
+                  }}>
+                    {(assignment.file_url || assignment.file_path) && (
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          try {
+                            const fileUrl = assignment.file_url || assignment.file_path;
+                            const filename = fileUrl.split('/').pop();
+                            
+                            let downloadUrl;
+                            if (assignment.id) {
+                              downloadUrl = `${api.baseUrl}/api/files/assignment/${assignment.id}`;
+                            } else {
+                              downloadUrl = `${api.baseUrl}${fileUrl}`;
+                            }
+
+                            const response = await fetch(downloadUrl, {
+                              headers: {
+                                'Authorization': `Bearer ${token}`
+                              }
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Failed to download file');
+                            }
+
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          } catch (error) {
+                            console.error('Download error:', error);
+                            alert('Failed to download file. Please try again.');
+                          }
+                        }}
+                        style={{ 
+                          padding: '0.75rem 1.5rem',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '0.875rem',
+                          boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        📥 Download Assignment File
+                      </button>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <label style={{ 
+                      padding: '0.75rem 1.5rem',
+                      background: assignment.is_submitted ? '#10b981' : '#3b82f6',
+                      color: 'white',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      boxShadow: assignment.is_submitted 
+                        ? '0 2px 4px rgba(16, 185, 129, 0.3)' 
+                        : '0 2px 4px rgba(59, 130, 246, 0.3)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      {assignment.is_submitted ? '📤 Resubmit Assignment' : '📤 Submit Assignment'}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+
+                          // Verify this is a teacher-assigned assignment
+                          if (!assignment.id || !assignment.teacher_id) {
+                            alert('This assignment cannot be submitted. Only teacher-assigned assignments can be submitted.');
+                            e.target.value = '';
+                            return;
+                          }
+
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('assignment_id', assignment.id);
+
+                            const response = await fetch(api.student.submitAssignment, {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${token}`
+                              },
+                              body: formData
+                            });
+
+                            const data = await response.json();
+                            if (data.success) {
+                              alert('Assignment submitted successfully!');
+                              loadTeacherAssignments();
+                            } else {
+                              alert(data.message || 'Failed to submit assignment');
+                            }
+                          } catch (error) {
+                            console.error('Submit error:', error);
+                            alert('Failed to submit assignment. Please try again.');
+                          }
+                          e.target.value = ''; // Reset input
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <p>No assignments available</p>
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '3rem', 
+            color: '#6b7280' 
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+            <p style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>No assignments available</p>
+            <p style={{ fontSize: '0.875rem' }}>Your teachers haven't assigned any assignments yet</p>
+          </div>
         )}
       </div>
     </div>

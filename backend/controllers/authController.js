@@ -6,21 +6,30 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 
 // Helper: support both hashed and plain-text passwords (for older seed data)
 const verifyPasswordWithFallback = async (plainPassword, storedPassword) => {
-  if (!storedPassword) return false;
+  // Check if storedPassword is NULL, undefined, or empty
+  if (!storedPassword || (typeof storedPassword === 'string' && storedPassword.trim() === '')) {
+    console.log('⚠️ Password verification failed: stored password is NULL or empty');
+    return false;
+  }
 
   // If looks like a bcrypt hash, try bcrypt.compare first
   const looksHashed = storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$');
 
   if (looksHashed) {
     try {
-      return await bcrypt.compare(plainPassword, storedPassword);
-    } catch {
+      const isValid = await bcrypt.compare(plainPassword, storedPassword);
+      console.log('🔐 Bcrypt password check:', isValid);
+      return isValid;
+    } catch (error) {
+      console.warn('⚠️ Bcrypt compare error:', error.message);
       // fall through to plain check
     }
   }
 
   // Fallback: plain-text match (for existing demo users)
-  return plainPassword === storedPassword;
+  const isPlainMatch = plainPassword === storedPassword;
+  console.log('🔐 Plain password check:', isPlainMatch);
+  return isPlainMatch;
 };
 
 // Register User
@@ -468,21 +477,42 @@ const login = async (req, res) => {
         let student = null;
         
         if (roll_no) {
-          // Login by roll number
+          // Login by roll number (preferred method)
           console.log('🔍 Checking student login by roll_no:', roll_no);
           const [students] = await pool.execute('SELECT * FROM students WHERE roll_no = ?', [roll_no]);
           student = students.length > 0 ? students[0] : null;
           console.log('📊 Student found by roll_no:', student ? 'Yes' : 'No');
+          if (student) {
+            console.log('📝 Student details:', { id: student.id, name: student.name, email: student.email, hasPassword: !!student.password });
+          }
         } else if (email) {
-          // Login by email (email can be null, so check for exact match)
+          // Login by email (email can be null in database, so check for exact match)
           console.log('🔍 Checking student login by email:', email);
-          const [students] = await pool.execute('SELECT * FROM students WHERE email = ?', [email]);
+          const [students] = await pool.execute('SELECT * FROM students WHERE email = ? AND email IS NOT NULL', [email]);
           student = students.length > 0 ? students[0] : null;
           console.log('📊 Student found by email:', student ? 'Yes' : 'No');
+          if (student) {
+            console.log('📝 Student details:', { id: student.id, name: student.name, roll_no: student.roll_no, hasPassword: !!student.password });
+          }
+          // If not found by email, suggest using roll_no
+          if (!student) {
+            console.log('⚠️ Student not found by email. Suggesting to use roll_no instead.');
+          }
         }
 
         if (student) {
           console.log('🔑 Student found, checking password...');
+          console.log('📝 Student password exists:', !!student.password);
+          
+          // Check if password is NULL or empty
+          if (!student.password || student.password.trim() === '') {
+            console.log('❌ Student password is NULL or empty');
+            return res.status(401).json({ 
+              success: false, 
+              message: 'Password not set. Please contact administrator to set your password.' 
+            });
+          }
+          
           const isValidPassword = await verifyPasswordWithFallback(password, student.password);
           console.log('🔐 Password valid:', isValidPassword);
           
@@ -536,9 +566,17 @@ const login = async (req, res) => {
           }
         } else {
           console.log('⚠️ Student not found:', { roll_no, email });
+          let errorMessage = 'Student not found. ';
+          if (email && !roll_no) {
+            errorMessage += 'Please try logging in with your roll number instead, or sign up if you are a new student.';
+          } else if (roll_no) {
+            errorMessage += 'Please check your roll number or sign up if you are a new student.';
+          } else {
+            errorMessage += 'Please provide email or roll number to login.';
+          }
           return res.status(401).json({ 
             success: false, 
-            message: 'Student not found. Please check your email/roll number or sign up if you are a new student.' 
+            message: errorMessage
           });
         }
       } catch (studentError) {
@@ -745,12 +783,46 @@ const parentLogin = async (req, res) => {
       }
     }
 
+    // Ensure parent record exists (create if doesn't exist)
+    if (!parent && student) {
+      try {
+        const parentEmail = student.parent_email || email;
+        const parentName = student.father_name || student.mother_name || 'Parent';
+        
+        // Try to create parent record
+        const [parentInsert] = await pool.execute(
+          'INSERT INTO parents (email, name, phone, student_id) VALUES (?, ?, ?, ?)',
+          [parentEmail, parentName, student.parent_phone || student.phone || null, student.id]
+        );
+        
+        const [newParents] = await pool.execute('SELECT * FROM parents WHERE id = ?', [parentInsert.insertId]);
+        if (newParents.length > 0) {
+          parent = newParents[0];
+          console.log('✅ Created parent record:', { id: parent.id, email: parent.email, student_id: student.id });
+        }
+      } catch (parentErr) {
+        // If duplicate entry, fetch existing parent
+        if (parentErr.code === 'ER_DUP_ENTRY') {
+          const [existingParents] = await pool.execute(
+            'SELECT * FROM parents WHERE email = ? OR student_id = ?',
+            [student.parent_email || email, student.id]
+          );
+          if (existingParents.length > 0) {
+            parent = existingParents[0];
+            console.log('✅ Found existing parent record:', { id: parent.id, email: parent.email });
+          }
+        } else {
+          console.warn('⚠️ Could not create parent record:', parentErr.message);
+        }
+      }
+    }
+
     // Generate token (no password required for parent login)
     const token = jwt.sign(
       { 
         userId: parent ? parent.id : student.id, 
         role: 'parent', 
-        email: parent ? parent.email : student.parent_email,
+        email: parent ? parent.email : (student.parent_email || email),
         studentId: student.id
       }, 
       JWT_SECRET, 

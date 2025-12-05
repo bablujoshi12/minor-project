@@ -29,6 +29,7 @@ const ParentDashboard = () => {
   const [assignments, setAssignments] = useState([]);
   const [testMarks, setTestMarks] = useState([]);
   const [semesterResults, setSemesterResults] = useState([]);
+  const [semesterFilter, setSemesterFilter] = useState('');
   const [messageTo, setMessageTo] = useState({ teacher_id: '', message: '', subject: '' });
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -93,7 +94,8 @@ const ParentDashboard = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const resultsData = await resultsRes.json();
-      if (resultsData.success) setSemesterResults(resultsData.data);
+      if (resultsData.success) setSemesterResults(resultsData.data || []);
+      else setSemesterResults([]);
 
     } catch (error) {
       console.error('Error loading child data:', error);
@@ -297,6 +299,22 @@ const ParentDashboard = () => {
             <h2>📝 Assignments</h2>
             {assignments.length > 0 ? (
               <>
+                {/* Warning for unsubmitted assignments */}
+                {assignments.filter(a => !a.is_submitted).length > 0 && (
+                  <div style={{
+                    padding: '1rem',
+                    marginBottom: '1rem',
+                    background: '#fef3c7',
+                    border: '1px solid #fbbf24',
+                    borderRadius: '8px',
+                    borderLeft: '4px solid #f59e0b'
+                  }}>
+                    <strong style={{ color: '#92400e' }}>⚠️ Warning:</strong>
+                    <span style={{ color: '#78350f', marginLeft: '0.5rem' }}>
+                      {assignments.filter(a => !a.is_submitted).length} assignment(s) not submitted yet. Please remind your child to submit them.
+                    </span>
+                  </div>
+                )}
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -307,32 +325,126 @@ const ParentDashboard = () => {
                       <th>Submitted</th>
                       <th>Marks</th>
                       <th>Due Date</th>
+                      <th>File</th>
                     </tr>
                   </thead>
                   <tbody>
                     {assignments.map((assignment, idx) => (
-                      <tr key={assignment.id || idx}>
+                      <tr key={assignment.id || idx} style={{
+                        background: !assignment.is_submitted ? '#fef2f2' : 'transparent'
+                      }}>
                         <td><strong>{assignment.title}</strong></td>
                         <td>{assignment.subject || assignment.description || '-'}</td>
                         <td>
-                          <span style={{ 
-                            padding: '0.25rem 0.5rem', 
-                            borderRadius: '4px', 
-                            fontSize: '0.75rem',
-                            background: assignment.is_submitted ? '#10b981' : '#3b82f6',
-                            color: 'white'
-                          }}>
-                            {assignment.is_submitted ? '✅ Submitted' : '📋 Assigned'}
-                          </span>
+                          {assignment.is_submitted ? (
+                            <span style={{ 
+                              padding: '0.25rem 0.5rem', 
+                              borderRadius: '4px', 
+                              fontSize: '0.75rem',
+                              background: '#10b981',
+                              color: 'white',
+                              fontWeight: '500'
+                            }}>
+                              ✅ Submitted
+                            </span>
+                          ) : (
+                            <span style={{ 
+                              padding: '0.25rem 0.5rem', 
+                              borderRadius: '4px', 
+                              fontSize: '0.75rem',
+                              background: '#ef4444',
+                              color: 'white',
+                              fontWeight: '500'
+                            }}>
+                              ⚠️ Not Submitted
+                            </span>
+                          )}
                         </td>
                         <td>
-                          <span className={`status-badge ${assignment.status || (assignment.is_submitted ? 'submitted' : 'pending')}`}>
-                            {assignment.status || (assignment.is_submitted ? 'submitted' : 'pending')}
-                          </span>
+                          {assignment.is_submitted ? (
+                            <span style={{ color: '#10b981', fontWeight: '500' }}>Submitted</span>
+                          ) : (
+                            <span style={{ color: '#ef4444', fontWeight: '500' }}>Pending</span>
+                          )}
                         </td>
-                        <td>{assignment.is_submitted ? (assignment.submission_date ? new Date(assignment.submission_date).toLocaleDateString() : 'Yes') : 'No'}</td>
+                        <td>
+                          {assignment.is_submitted ? (
+                            assignment.submission_date ? new Date(assignment.submission_date).toLocaleDateString() : 'Yes'
+                          ) : (
+                            <span style={{ color: '#ef4444', fontWeight: '500' }}>No</span>
+                          )}
+                        </td>
                         <td>{assignment.marks || assignment.marks_obtained || '-'}</td>
-                        <td>{assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : '-'}</td>
+                        <td>
+                          {assignment.due_date ? (
+                            new Date(assignment.due_date) < new Date() && !assignment.is_submitted ? (
+                              <span style={{ color: '#ef4444', fontWeight: '500' }}>
+                                {new Date(assignment.due_date).toLocaleDateString()} (Overdue)
+                              </span>
+                            ) : (
+                              new Date(assignment.due_date).toLocaleDateString()
+                            )
+                          ) : '-'}
+                        </td>
+                        <td>
+                          {(assignment.file_url || assignment.file_path) && (
+                            <button
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  const fileUrl = assignment.file_url || assignment.file_path;
+                                  const filename = fileUrl.split('/').pop();
+                                  
+                                  // Use download endpoint if assignment ID is available
+                                  let downloadUrl;
+                                  if (assignment.id) {
+                                    downloadUrl = `${api.baseUrl}/api/files/assignment/${assignment.id}`;
+                                  } else {
+                                    downloadUrl = `${api.baseUrl}${fileUrl}`;
+                                  }
+
+                                  // Fetch file with authentication token
+                                  const response = await fetch(downloadUrl, {
+                                    headers: {
+                                      'Authorization': `Bearer ${token}`
+                                    }
+                                  });
+
+                                  if (!response.ok) {
+                                    throw new Error('Failed to download file');
+                                  }
+
+                                  // Create blob and download
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = filename;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Download error:', error);
+                                  alert('Failed to download file. Please try again.');
+                                }
+                              }}
+                              style={{ 
+                                color: '#3b82f6', 
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                font: 'inherit'
+                              }}
+                            >
+                              📥 Download
+                            </button>
+                          )}
+                          {!assignment.file_url && !assignment.file_path && <span style={{ color: '#9ca3af' }}>-</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -348,9 +460,9 @@ const ParentDashboard = () => {
             )}
           </div>
 
-          {/* Test Marks (3rd & 4th Semester Only) */}
+          {/* Test Marks (All Semesters) */}
           <div className="dashboard-card">
-            <h2>📊 Test Marks (3rd & 4th Semester)</h2>
+            <h2>📊 Test Marks</h2>
             {testMarks.length > 0 ? (
               <table className="data-table">
                 <thead>
@@ -366,8 +478,12 @@ const ParentDashboard = () => {
                 <tbody>
                   {testMarks.map((mark, idx) => {
                     const formatSemester = (sem) => {
+                      if (sem === 1) return '1st';
+                      if (sem === 2) return '2nd';
                       if (sem === 3) return '3rd';
                       if (sem === 4) return '4th';
+                      if (sem === 5) return '5th';
+                      if (sem === 6) return '6th';
                       return `${sem}th`;
                     };
                     const percentage = typeof mark.percentage === 'number' ? mark.percentage : 
@@ -394,28 +510,40 @@ const ParentDashboard = () => {
                 </tbody>
               </table>
             ) : (
-              <p>No test marks available for 3rd & 4th semester</p>
+              <p>No test marks available</p>
             )}
           </div>
 
-          {/* Semester Results (3rd and 4th Semester only) */}
+          {/* Semester Results (filterable) */}
           <div className="dashboard-card">
-            <h2>🏆 Semester Results (3rd & 4th Semester)</h2>
+            <h2>🏆 Semester Results</h2>
             {semesterResults.length > 0 ? (
-              <div className="results-grid">
-                {semesterResults.map((result, idx) => (
-                  <div key={idx} className="result-card">
-                    <h3>{result.semester} Semester</h3>
-                    <div className="result-percentage">{result.percentage}%</div>
-                    <div className={`result-status ${result.status}`}>{result.status.toUpperCase()}</div>
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                      {result.total_subjects} Subjects
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <select value={semesterFilter} onChange={(e) => setSemesterFilter(e.target.value)}>
+                    <option value="">All Semesters</option>
+                    {[1,2,3,4,5,6].map(sem => (
+                      <option key={sem} value={sem}>{sem} Semester</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="results-grid">
+                  {semesterResults
+                    .filter(r => !semesterFilter || String(r.semester_num || r.semester) === String(semesterFilter))
+                    .map((result, idx) => (
+                      <div key={idx} className="result-card">
+                        <h3>{result.semester} Semester</h3>
+                        <div className="result-percentage">{result.percentage}%</div>
+                        <div className={`result-status ${result.status}`}>{result.status.toUpperCase()}</div>
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          {result.total_subjects} Subjects
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
             ) : (
-              <p>No semester results available for 3rd and 4th semester</p>
+              <p>No semester results available</p>
             )}
           </div>
 

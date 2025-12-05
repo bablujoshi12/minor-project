@@ -61,6 +61,14 @@ app.use('/api/faculty', facultyRoutes);
 const nssNccRoutes = require('./routes/nssNcc');
 app.use('/api', nssNccRoutes);
 
+// Mount subjects routes
+const subjectsRoutes = require('./routes/subjects');
+app.use('/api/subjects', subjectsRoutes);
+
+// Mount file download routes
+const fileController = require('./controllers/fileController');
+app.get('/api/files/assignment/:assignmentId', require('./middleware/auth').authenticate, fileController.downloadAssignment);
+
 // Serve static images from public/images folder
 app.use('/images', express.static(path.join(__dirname, '../public/images')));
 
@@ -83,7 +91,7 @@ const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'gpl_lohaghat_db',
+  database: process.env.DB_NAME || 'smart_campus',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -602,6 +610,15 @@ app.get('/api/features', async (req, res) => {
     
   } catch (error) {
     console.error('Error fetching features:', error);
+    // If table doesn't exist, return empty array instead of error
+    if (error.code === 'ER_NO_SUCH_TABLE') {
+      console.log('Features table does not exist, returning empty array');
+      return res.json({
+        success: true,
+        data: [],
+        count: 0
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Error fetching features',
@@ -789,7 +806,7 @@ app.get('/', (req, res) => {
 
 /**
  * GET /api/homepage/departments
- * Get all active departments
+ * Get all active departments with real student and teacher details
  */
 app.get('/api/homepage/departments', async (req, res) => {
   try {
@@ -806,17 +823,130 @@ app.get('/api/homepage/departments', async (req, res) => {
       ORDER BY id ASC`
     );
     
-    // Map to expected format
-    const departments = rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      code: row.code,
-      description: row.description || '',
-      students: row.total_students || 0,
-      teachers: row.total_faculty || 0,
-      hod: row.hod_name || '',
-      icon: '🏛️', // Default icon
-      color: '#667eea' // Default color
+    // Map to expected format and fetch real data
+    const departments = await Promise.all(rows.map(async (row) => {
+      const dept = {
+        id: row.id,
+        name: row.name,
+        code: row.code,
+        description: row.description || '',
+        students: row.total_students || 0,
+        teachers: row.total_faculty || 0,
+        hod: row.hod_name || '',
+        icon: '🏛️', // Default icon
+        color: '#667eea', // Default color
+        facultyList: [],
+        studentList: []
+      };
+
+      // Fetch real faculty members from faculty table for this department
+      try {
+        // First try faculty table (has department_id)
+        const [facultyRows] = await pool.query(
+          `SELECT name, designation, qualification, email, phone
+           FROM faculty 
+           WHERE department_id = ? AND status = 'active'
+           ORDER BY name ASC`,
+          [row.id]
+        );
+        
+        if (facultyRows.length > 0) {
+          // Show all faculty members from faculty table
+          dept.facultyList = facultyRows.map(f => {
+            let facultyStr = f.name;
+            if (f.designation) {
+              facultyStr += ` - ${f.designation}`;
+            }
+            if (f.qualification) {
+              facultyStr += ` (${f.qualification})`;
+            }
+            return facultyStr;
+          });
+          // Update teachers count to match actual faculty count
+          dept.teachers = facultyRows.length;
+          console.log(`📋 Department ${row.name} (ID: ${row.id}): Found ${facultyRows.length} faculty members from faculty table`);
+        } else {
+          // Fallback: Get teachers from teachers table by matching through students
+          // Teachers are linked to branches, students have both branch_id and department_id
+          const [teacherRows] = await pool.query(
+            `SELECT DISTINCT t.id, t.name, t.email, t.phone
+             FROM teachers t
+             INNER JOIN students s ON t.branch_id = s.branch_id
+             WHERE s.department_id = ?
+             GROUP BY t.id, t.name, t.email, t.phone
+             ORDER BY t.name ASC`,
+            [row.id]
+          );
+          
+          if (teacherRows.length > 0) {
+            dept.facultyList = teacherRows.map(t => t.name);
+            dept.teachers = teacherRows.length;
+            console.log(`📋 Department ${row.name} (ID: ${row.id}): Found ${teacherRows.length} teachers from teachers table`);
+          } else {
+            dept.facultyList = [];
+            console.log(`⚠️ No faculty/teachers found for department ${row.name} (ID: ${row.id})`);
+          }
+        }
+      } catch (facultyErr) {
+        console.error(`❌ Error fetching faculty for department ${row.id} (${row.name}):`, facultyErr.message);
+        dept.facultyList = [];
+      }
+
+      // Fetch real students from students table grouped by year
+      try {
+        const [studentRows] = await pool.query(
+          `SELECT 
+            s.id,
+            s.name,
+            s.roll_no,
+            s.year,
+            s.semester,
+            s.section,
+            s.email,
+            s.phone
+           FROM students s
+           WHERE s.department_id = ? AND s.status = 'active'
+           ORDER BY s.year ASC, s.roll_no ASC`,
+          [row.id]
+        );
+        
+        console.log(`📚 Department ${row.name} (ID: ${row.id}): Found ${studentRows.length} students`);
+        
+        if (studentRows.length > 0) {
+          // Update students count to match actual count from students table
+          dept.students = studentRows.length;
+          
+          // Group students by year
+          const studentsByYear = {};
+          studentRows.forEach(student => {
+            const year = student.year || 'N/A';
+            if (!studentsByYear[year]) {
+              studentsByYear[year] = [];
+            }
+            studentsByYear[year].push(student);
+          });
+
+          // Format student list by year - show all students
+          dept.studentList = Object.keys(studentsByYear).sort().map(year => {
+            const yearStudents = studentsByYear[year];
+            // Show first 15 students, then mention remaining
+            const studentNames = yearStudents.slice(0, 15).map(s => s.name).join(', ');
+            const totalCount = yearStudents.length;
+            const moreText = totalCount > 15 ? ` and ${totalCount - 15} more` : '';
+            return `YEAR ${year}: ${studentNames}${moreText} (${totalCount} students)`;
+          });
+        } else {
+          // No students found in students table
+          dept.studentList = [];
+          console.log(`⚠️ No students found for department ${row.name} (ID: ${row.id})`);
+        }
+      } catch (studentErr) {
+        console.error(`❌ Error fetching students for department ${row.id} (${row.name}):`, studentErr.message);
+        console.error('Error details:', studentErr);
+        dept.studentList = [];
+      }
+
+      return dept;
     }));
     
     res.json({
@@ -859,18 +989,32 @@ app.get('/api/homepage/features', async (req, res) => {
       );
     } catch (err) {
       // Fallback to features table if homepage_features doesn't exist
-      [rows] = await pool.query(
-        `SELECT 
-          id,
-          icon,
-          title,
-          description,
-          bg_gradient as bg,
-          link_url as link
-        FROM features 
-        ORDER BY id ASC
-        LIMIT 10`
-      );
+      if (err.code === 'ER_NO_SUCH_TABLE') {
+        try {
+          [rows] = await pool.query(
+            `SELECT 
+              id,
+              icon,
+              title,
+              description,
+              bg_gradient as bg,
+              link_url as link
+            FROM features 
+            ORDER BY id ASC
+            LIMIT 10`
+          );
+        } catch (err2) {
+          // If features table also doesn't exist, use empty array
+          if (err2.code === 'ER_NO_SUCH_TABLE') {
+            console.log('Features table does not exist, returning empty array');
+            rows = [];
+          } else {
+            throw err2;
+          }
+        }
+      } else {
+        throw err;
+      }
     }
     
     const features = rows.map(row => ({
@@ -929,13 +1073,13 @@ app.get('/api/homepage/events', async (req, res) => {
         `SELECT 
           id,
           title,
-          date,
+          event_date AS date,
           location,
           description,
-          image_url,
-          link_url
+          NULL AS image_url,
+          NULL AS link_url
         FROM events 
-        ORDER BY date ASC
+        ORDER BY event_date ASC
         LIMIT 10`
       );
     }
@@ -991,23 +1135,137 @@ app.get('/api/homepage/events', async (req, res) => {
  */
 app.get('/api/homepage/all', async (req, res) => {
   try {
-    // Get departments - use actual columns
+    // Get departments - use actual columns with real student and teacher data
     let departments = [];
     try {
       const [deptRows] = await pool.query(
         `SELECT id, name, code, description, hod_name, total_students, total_faculty
          FROM departments ORDER BY id ASC`
       );
-      departments = deptRows.map(row => ({
-        id: row.id,
-        name: row.name,
-        code: row.code,
-        description: row.description || '',
-        students: row.total_students || 0,
-        teachers: row.total_faculty || 0,
-        hod: row.hod_name || '',
-        icon: '🏛️',
-        color: '#667eea'
+      
+      departments = await Promise.all(deptRows.map(async (row) => {
+        const dept = {
+          id: row.id,
+          name: row.name,
+          code: row.code,
+          description: row.description || '',
+          students: row.total_students || 0,
+          teachers: row.total_faculty || 0,
+          hod: row.hod_name || '',
+          icon: '🏛️',
+          color: '#667eea',
+          facultyList: [],
+          studentList: []
+        };
+
+        // Fetch real faculty members from faculty table for this department
+        try {
+          // First try faculty table (has department_id)
+          const [facultyRows] = await pool.query(
+            `SELECT name, designation, qualification, email, phone
+             FROM faculty 
+             WHERE department_id = ? AND status = 'active'
+             ORDER BY name ASC`,
+            [row.id]
+          );
+          
+          if (facultyRows.length > 0) {
+            // Show all faculty members from faculty table
+            dept.facultyList = facultyRows.map(f => {
+              let facultyStr = f.name;
+              if (f.designation) {
+                facultyStr += ` - ${f.designation}`;
+              }
+              if (f.qualification) {
+                facultyStr += ` (${f.qualification})`;
+              }
+              return facultyStr;
+            });
+            // Update teachers count to match actual faculty count
+            dept.teachers = facultyRows.length;
+            console.log(`📋 Department ${row.name} (ID: ${row.id}): Found ${facultyRows.length} faculty members from faculty table`);
+          } else {
+            // Fallback: Get teachers from teachers table by matching through students
+            // Teachers are linked to branches, students have both branch_id and department_id
+            const [teacherRows] = await pool.query(
+              `SELECT DISTINCT t.id, t.name, t.email, t.phone
+               FROM teachers t
+               INNER JOIN students s ON t.branch_id = s.branch_id
+               WHERE s.department_id = ?
+               GROUP BY t.id, t.name, t.email, t.phone
+               ORDER BY t.name ASC`,
+              [row.id]
+            );
+            
+            if (teacherRows.length > 0) {
+              dept.facultyList = teacherRows.map(t => t.name);
+              dept.teachers = teacherRows.length;
+              console.log(`📋 Department ${row.name} (ID: ${row.id}): Found ${teacherRows.length} teachers from teachers table`);
+            } else {
+              dept.facultyList = [];
+              console.log(`⚠️ No faculty/teachers found for department ${row.name} (ID: ${row.id})`);
+            }
+          }
+        } catch (facultyErr) {
+          console.error(`❌ Error fetching faculty for department ${row.id} (${row.name}):`, facultyErr.message);
+          dept.facultyList = [];
+        }
+
+        // Fetch real students from students table grouped by year
+        try {
+          const [studentRows] = await pool.query(
+            `SELECT 
+              s.id,
+              s.name,
+              s.roll_no,
+              s.year,
+              s.semester,
+              s.section,
+              s.email,
+              s.phone
+             FROM students s
+             WHERE s.department_id = ? AND s.status = 'active'
+             ORDER BY s.year ASC, s.roll_no ASC`,
+            [row.id]
+          );
+          
+          console.log(`📚 Department ${row.name} (ID: ${row.id}): Found ${studentRows.length} students`);
+          
+          if (studentRows.length > 0) {
+            // Update students count to match actual count from students table
+            dept.students = studentRows.length;
+            
+            // Group students by year
+            const studentsByYear = {};
+            studentRows.forEach(student => {
+              const year = student.year || 'N/A';
+              if (!studentsByYear[year]) {
+                studentsByYear[year] = [];
+              }
+              studentsByYear[year].push(student);
+            });
+
+            // Format student list by year - show all students
+            dept.studentList = Object.keys(studentsByYear).sort().map(year => {
+              const yearStudents = studentsByYear[year];
+              // Show first 15 students, then mention remaining
+              const studentNames = yearStudents.slice(0, 15).map(s => s.name).join(', ');
+              const totalCount = yearStudents.length;
+              const moreText = totalCount > 15 ? ` and ${totalCount - 15} more` : '';
+              return `YEAR ${year}: ${studentNames}${moreText} (${totalCount} students)`;
+            });
+          } else {
+            // No students found in students table
+            dept.studentList = [];
+            console.log(`⚠️ No students found for department ${row.name} (ID: ${row.id})`);
+          }
+        } catch (studentErr) {
+          console.error(`❌ Error fetching students for department ${row.id} (${row.name}):`, studentErr.message);
+          console.error('Error details:', studentErr);
+          dept.studentList = [];
+        }
+
+        return dept;
       }));
     } catch (err) {
       console.error('Error fetching departments:', err);
@@ -1024,11 +1282,26 @@ app.get('/api/homepage/all', async (req, res) => {
         );
         features = featRows;
       } catch (err) {
-        const [featRows] = await pool.query(
-          `SELECT id, icon, title, description, bg_gradient as bg, link_url as link
-           FROM features ORDER BY id ASC LIMIT 10`
-        );
-        features = featRows;
+        // If homepage_features doesn't exist, try features table
+        if (err.code === 'ER_NO_SUCH_TABLE') {
+          try {
+            const [featRows] = await pool.query(
+              `SELECT id, icon, title, description, bg_gradient as bg, link_url as link
+               FROM features ORDER BY id ASC LIMIT 10`
+            );
+            features = featRows;
+          } catch (err2) {
+            // If features table also doesn't exist, just use empty array
+            if (err2.code === 'ER_NO_SUCH_TABLE') {
+              console.log('Features table does not exist, using empty array');
+              features = [];
+            } else {
+              throw err2;
+            }
+          }
+        } else {
+          throw err;
+        }
       }
       
       features = features.map(row => ({

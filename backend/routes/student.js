@@ -8,6 +8,7 @@ router.use(authenticate);
 router.use(checkRole('student'));
 
 router.post('/upload-assignment', studentController.upload.single('assignment'), studentController.uploadAssignment);
+router.post('/submit-assignment', studentController.upload.single('file'), studentController.submitAssignment);
 router.get('/attendance-dashboard', studentController.getAttendanceDashboard);
 router.get('/test-marks', studentController.getTestMarks);
 router.get('/semester-results', studentController.getSemesterResults);

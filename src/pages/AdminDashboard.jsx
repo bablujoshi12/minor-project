@@ -69,6 +69,43 @@ const AdminDashboard = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userForm, setUserForm] = useState({ type: 'student', name: '', email: '', password: '', roll_no: '', branch: '', year: '1', phone: '', parent_email: '', parent_name: '' });
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [editingNotice, setEditingNotice] = useState(null);
+  
+  // Enhanced Management States
+  const [departments, setDepartments] = useState([]);
+  const [hods, setHODs] = useState([]);
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [showDepartmentModal, setShowDepartmentModal] = useState(false);
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [showHODModal, setShowHODModal] = useState(false);
+  const [editingHOD, setEditingHOD] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editingTeacher, setEditingTeacher] = useState(null);
+  const [editingDepartment, setEditingDepartment] = useState(null);
+  const [editingBranch, setEditingBranch] = useState(null);
+  const [viewingStudent, setViewingStudent] = useState(null);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // Forms
+  const [studentForm, setStudentForm] = useState({
+    roll_no: '', name: '', email: '', password: '', phone: '', branch_id: '', department_id: '',
+    year: '', semester: '', section: '', father_name: '', mother_name: '', dob: '', sex: '',
+    category: '', parent_email: '', parent_phone: '', parent_name: '', blood_group: '', status: 'active'
+  });
+  const [teacherForm, setTeacherForm] = useState({
+    name: '', email: '', password: '', phone: '', branch_id: ''
+  });
+  const [departmentForm, setDepartmentForm] = useState({
+    name: '', code: '', description: '', hod_name: ''
+  });
+  const [branchForm, setBranchForm] = useState({
+    name: '', code: '', description: ''
+  });
+  const [hodForm, setHODForm] = useState({
+    department_id: '', teacher_id: ''
+  });
 
   useEffect(() => {
     loadDashboardData();
@@ -88,6 +125,9 @@ const AdminDashboard = () => {
       loadNotes();
     } else if (activeTab === 'nssncc') {
       loadNSSNCCData();
+    } else if (activeTab === 'departments') {
+      loadDepartments();
+      loadHODs();
     }
   }, [activeTab, studentFilters]);
 
@@ -227,6 +267,47 @@ const AdminDashboard = () => {
     }
   };
 
+  const loadDepartments = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(api.admin.departments, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDepartments(data.data || []);
+        console.log(`✅ Loaded ${data.data?.length || 0} departments`);
+      } else {
+        console.error('❌ Failed to load departments:', data.message);
+        setDepartments([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading departments:', error);
+      setDepartments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadHODs = async () => {
+    try {
+      const response = await fetch(api.admin.hods, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setHODs(data.data || []);
+        console.log(`✅ Loaded ${data.data?.length || 0} HODs`);
+      } else {
+        console.error('❌ Failed to load HODs:', data.message);
+        setHODs([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading HODs:', error);
+      setHODs([]);
+    }
+  };
+
   const loadNotes = async () => {
     try {
       const response = await fetch(api.notesBoard.all, {
@@ -315,11 +396,27 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(data.message || 'Saved successfully!');
+        setMessage({ type: 'success', text: data.message || 'Saved successfully!' });
         setShowNssNccModal(false);
+        setEditingNssNcc(null);
+        setNssNccForm({
+          registration_id: '',
+          name: '',
+          location: '',
+          father_name: '',
+          mother_name: '',
+          program: '',
+          category: 'GEN',
+          dob: '',
+          gender: 'M',
+          email: '',
+          phone: ''
+        });
         loadNSSNCCData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
-        alert(data.message || 'Error saving');
+        setMessage({ type: 'error', text: data.message || 'Error saving' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       }
     } catch (error) {
       console.error('Error saving NSS/NCC:', error);
@@ -375,14 +472,18 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('Note posted successfully!');
+        setMessage({ type: 'success', text: 'Note posted successfully!' });
         setNoteForm({ title: '', message: '', priority: 'normal' });
         loadNotes();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
-        alert(data.message || 'Failed to post note');
+        setMessage({ type: 'error', text: data.message || 'Failed to post note' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       }
     } catch (error) {
-      alert('Error posting note');
+      setMessage({ type: 'error', text: 'Error posting note' });
+      console.error('Error posting note:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } finally {
       setLoading(false);
     }
@@ -407,14 +508,18 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('Note updated successfully!');
+        setMessage({ type: 'success', text: 'Note updated successfully!' });
         loadNotes();
         setEditingNote(null);
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
-        alert(data.message || 'Failed to update note');
+        setMessage({ type: 'error', text: data.message || 'Failed to update note' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       }
     } catch (error) {
-      alert('Error updating note');
+      setMessage({ type: 'error', text: 'Error updating note' });
+      console.error('Error updating note:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } finally {
       setLoading(false);
     }
@@ -424,6 +529,7 @@ const AdminDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this note?')) return;
 
     try {
+      setLoading(true);
       const response = await fetch(api.notesBoard.delete(id), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -431,20 +537,27 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('Note deleted successfully!');
+        setMessage({ type: 'success', text: 'Note deleted successfully!' });
         loadNotes();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
-        alert(data.message || 'Failed to delete note');
+        setMessage({ type: 'error', text: data.message || 'Failed to delete note' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       }
     } catch (error) {
-      alert('Error deleting note');
+      setMessage({ type: 'error', text: 'Error deleting note' });
+      console.error('Delete note error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSendNotice = async (e) => {
     e.preventDefault();
     if (!noticeForm.title || !noticeForm.message) {
-      alert('Please fill all required fields');
+      setMessage({ type: 'error', text: 'Please fill all required fields' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       return;
     }
 
@@ -461,17 +574,103 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('Notice sent successfully!');
+        setMessage({ type: 'success', text: 'Notice sent successfully!' });
         setNoticeForm({ title: '', message: '', recipient_type: 'all', branch_id: '', priority: 'medium' });
         loadNotices();
         loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
-        alert(data.message || 'Failed to send notice');
+        setMessage({ type: 'error', text: data.message || 'Failed to send notice' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       }
     } catch (error) {
-      alert('Error sending notice');
+      setMessage({ type: 'error', text: 'Error sending notice' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openNoticeModal = (notice = null) => {
+    if (notice) {
+      setEditingNotice(notice);
+      setNoticeForm({
+        title: notice.title || '',
+        message: notice.message || '',
+        recipient_type: notice.recipient_type || 'all',
+        branch_id: notice.branch_id || '',
+        priority: notice.priority || 'medium'
+      });
+    } else {
+      setEditingNotice(null);
+      setNoticeForm({ title: '', message: '', recipient_type: 'all', branch_id: '', priority: 'medium' });
+    }
+    setShowNoticeModal(true);
+  };
+
+  const handleUpdateNotice = async (e) => {
+    e.preventDefault();
+    if (!noticeForm.title || !noticeForm.message) {
+      setMessage({ type: 'error', text: 'Please fill all required fields' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(api.admin.updateNotice(editingNotice.id), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(noticeForm)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Notice updated successfully!' });
+        setShowNoticeModal(false);
+        setEditingNotice(null);
+        loadNotices();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to update notice' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error updating notice' });
+      console.error('Update notice error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteNotice = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this notice?')) return;
+
+    try {
+      const response = await fetch(api.admin.deleteNotice(id), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Notice deleted successfully' });
+        loadNotices();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to delete notice' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error deleting notice' });
+      console.error('Delete notice error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     }
   };
 
@@ -479,6 +678,7 @@ const AdminDashboard = () => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
 
     try {
+      setLoading(true);
       const response = await fetch(api.admin.deleteUser(type, id), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -486,22 +686,510 @@ const AdminDashboard = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(`${type} deleted successfully`);
+        setMessage({ type: 'success', text: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully` });
         if (type === 'teacher') loadTeachers();
         else if (type === 'student') loadStudents();
         else if (type === 'parent') loadParents();
         loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } else {
-        alert(data.message || 'Failed to delete user');
+        setMessage({ type: 'error', text: data.message || 'Failed to delete user' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       }
     } catch (error) {
-      alert('Error deleting user');
+      setMessage({ type: 'error', text: 'Error deleting user' });
+      console.error('Delete user error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleViewDetails = (user, type) => {
     setSelectedUser({ ...user, type });
     setShowDetailsModal(true);
+  };
+
+  // ========== STUDENT MANAGEMENT FUNCTIONS ==========
+  
+  // Helper function to format date to yyyy-MM-dd format
+  const formatDateForInput = (dateStr) => {
+    if (!dateStr) return '';
+    
+    // If already in yyyy-MM-dd format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+    
+    // If contains 'T' (ISO format), extract date part
+    if (dateStr.includes('T')) {
+      return dateStr.split('T')[0];
+    }
+    
+    // Try to parse different date formats
+    try {
+      // Handle formats like "4/5/2006" or "04/05/2006"
+      if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          const year = parts[2];
+          // Check if year is 2 digits, assume 20xx
+          const fullYear = year.length === 2 ? `20${year}` : year;
+          return `${fullYear}-${month}-${day}`;
+        }
+      }
+      
+      // Try parsing as Date object
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+    } catch (e) {
+      console.error('Date parsing error:', e);
+    }
+    
+    return '';
+  };
+  
+  const openStudentModal = (student = null) => {
+    if (student) {
+      setEditingStudent(student);
+      setStudentForm({
+        roll_no: student.roll_no || '',
+        name: student.name || '',
+        email: student.email || '',
+        password: '',
+        phone: student.phone || '',
+        branch_id: student.branch_id || '',
+        department_id: student.department_id || '',
+        year: student.year || '',
+        semester: student.semester || '',
+        section: student.section || '',
+        father_name: student.father_name || '',
+        mother_name: student.mother_name || '',
+        dob: formatDateForInput(student.dob),
+        sex: student.sex || '',
+        category: student.category || '',
+        parent_email: student.parent_email || '',
+        parent_phone: student.parent_phone || '',
+        parent_name: student.parent_name || '',
+        blood_group: student.blood_group || '',
+        status: student.status || 'active'
+      });
+    } else {
+      setEditingStudent(null);
+      setStudentForm({
+        roll_no: '', name: '', email: '', password: '', phone: '', branch_id: '', department_id: '',
+        year: '', semester: '', section: '', father_name: '', mother_name: '', dob: '', sex: '',
+        category: '', parent_email: '', parent_phone: '', parent_name: '', blood_group: '', status: 'active'
+      });
+    }
+    setShowStudentModal(true);
+  };
+
+  const handleSaveStudent = async (e) => {
+    e.preventDefault();
+    if (!studentForm.roll_no || !studentForm.name) {
+      setMessage({ type: 'error', text: 'Roll number and name are required' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = editingStudent ? api.admin.updateStudent(editingStudent.id) : api.admin.createStudent;
+      const method = editingStudent ? 'PUT' : 'POST';
+      
+      // Clean form data - convert empty strings to null for integer fields
+      const formData = { ...studentForm };
+      
+      // Convert empty strings to null for integer/ID fields
+      if (formData.branch_id === '' || formData.branch_id === null) formData.branch_id = null;
+      if (formData.department_id === '' || formData.department_id === null) formData.department_id = null;
+      if (formData.year === '' || formData.year === null) formData.year = null;
+      if (formData.semester === '' || formData.semester === null) formData.semester = null;
+      
+      // Convert empty strings to null for optional string fields
+      if (formData.email === '') formData.email = null;
+      if (formData.phone === '') formData.phone = null;
+      if (formData.section === '') formData.section = null;
+      if (formData.father_name === '') formData.father_name = null;
+      if (formData.mother_name === '') formData.mother_name = null;
+      if (formData.dob === '') formData.dob = null;
+      if (formData.sex === '') formData.sex = null;
+      if (formData.category === '') formData.category = null;
+      if (formData.parent_email === '') formData.parent_email = null;
+      if (formData.parent_phone === '') formData.parent_phone = null;
+      if (formData.blood_group === '') formData.blood_group = null;
+      
+      // Remove password if editing and empty
+      if (editingStudent && !formData.password) {
+        delete formData.password;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: `Student ${editingStudent ? 'updated' : 'created'} successfully` });
+        setShowStudentModal(false);
+        setEditingStudent(null);
+        setStudentForm({
+          roll_no: '', name: '', email: '', password: '', phone: '', branch_id: '', department_id: '',
+          year: '', semester: '', section: '', father_name: '', mother_name: '', dob: '', sex: '',
+          category: '', parent_email: '', parent_phone: '', parent_name: '', blood_group: '', status: 'active'
+        });
+        loadStudents();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to save student' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error saving student' });
+      console.error('Save student error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const viewStudentDetails = async (id) => {
+    try {
+      const response = await fetch(api.admin.studentById(id), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setViewingStudent(data.data);
+        setShowDetailsModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading student details:', error);
+    }
+  };
+
+  // ========== TEACHER MANAGEMENT FUNCTIONS ==========
+  
+  const openTeacherModal = (teacher = null) => {
+    if (teacher) {
+      setEditingTeacher(teacher);
+      setTeacherForm({
+        name: teacher.name || '',
+        email: teacher.email || '',
+        password: '',
+        phone: teacher.phone || '',
+        branch_id: teacher.branch_id || ''
+      });
+    } else {
+      setEditingTeacher(null);
+      setTeacherForm({
+        name: '', email: '', password: '', phone: '', branch_id: ''
+      });
+    }
+    setShowTeacherModal(true);
+  };
+
+  const handleSaveTeacher = async (e) => {
+    e.preventDefault();
+    if (!teacherForm.name || !teacherForm.email) {
+      setMessage({ type: 'error', text: 'Name and email are required' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+    if (!editingTeacher && !teacherForm.password) {
+      setMessage({ type: 'error', text: 'Password is required for new teachers' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = editingTeacher ? api.admin.updateTeacher(editingTeacher.id) : api.admin.createTeacher;
+      const method = editingTeacher ? 'PUT' : 'POST';
+      
+      const formData = { ...teacherForm };
+      if (editingTeacher && !formData.password) {
+        delete formData.password;
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: `Teacher ${editingTeacher ? 'updated' : 'created'} successfully` });
+        setShowTeacherModal(false);
+        setEditingTeacher(null);
+        setTeacherForm({
+          name: '', email: '', password: '', phone: '', branch_id: ''
+        });
+        loadTeachers();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to save teacher' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error saving teacher' });
+      console.error('Save teacher error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ========== DEPARTMENT/BRANCH/HOD FUNCTIONS ==========
+  
+  const openDepartmentModal = (dept = null) => {
+    setEditingDepartment(dept);
+    setDepartmentForm(dept ? { name: dept.name || '', code: dept.code || '', description: dept.description || '', hod_name: dept.hod_name || '' } : { name: '', code: '', description: '', hod_name: '' });
+    setShowDepartmentModal(true);
+  };
+
+  const handleSaveDepartment = async (e) => {
+    e.preventDefault();
+    if (!departmentForm.name || !departmentForm.code) {
+      setMessage({ type: 'error', text: 'Name and code are required' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+    try {
+      setLoading(true);
+      const url = editingDepartment ? api.admin.updateDepartment(editingDepartment.id) : api.admin.createDepartment;
+      const response = await fetch(url, {
+        method: editingDepartment ? 'PUT' : 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(departmentForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: `Department ${editingDepartment ? 'updated' : 'created'} successfully` });
+        setShowDepartmentModal(false);
+        setEditingDepartment(null);
+        setDepartmentForm({ name: '', code: '', description: '', hod_name: '' });
+        loadDepartments();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to save department' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error saving department' });
+      console.error('Save department error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openBranchModal = (branch = null) => {
+    setEditingBranch(branch);
+    setBranchForm(branch ? { name: branch.name || branch.branch_name || '', code: branch.code || '', description: branch.description || '' } : { name: '', code: '', description: '' });
+    setShowBranchModal(true);
+  };
+
+  const handleSaveBranch = async (e) => {
+    e.preventDefault();
+    if (!branchForm.name || !branchForm.code) {
+      setMessage({ type: 'error', text: 'Name and code are required' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+    try {
+      setLoading(true);
+      const url = editingBranch ? api.admin.updateBranch(editingBranch.id) : api.admin.createBranch;
+      const response = await fetch(url, {
+        method: editingBranch ? 'PUT' : 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(branchForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: `Branch ${editingBranch ? 'updated' : 'created'} successfully` });
+        setShowBranchModal(false);
+        setEditingBranch(null);
+        setBranchForm({ name: '', code: '', description: '' });
+        loadBranches();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to save branch' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error saving branch' });
+      console.error('Save branch error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openHODModal = (department = null) => {
+    if (department) {
+      // Editing existing HOD
+      setEditingHOD(department);
+      // Find the teacher by name if HOD exists
+      const hodTeacher = teachers.find(t => t.name === department.hod_name);
+      setHODForm({
+        department_id: department.id,
+        teacher_id: hodTeacher ? hodTeacher.id : ''
+      });
+    } else {
+      // Adding new HOD
+      setEditingHOD(null);
+      setHODForm({
+        department_id: '',
+        teacher_id: ''
+      });
+    }
+    setShowHODModal(true);
+  };
+
+  const handleAssignHOD = async (e) => {
+    e.preventDefault();
+    if (!hodForm.department_id || !hodForm.teacher_id) {
+      setMessage({ type: 'error', text: 'Department and Teacher are required' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      return;
+    }
+    try {
+      setLoading(true);
+      const response = await fetch(api.admin.assignHOD, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(hodForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: editingHOD ? 'HOD updated successfully' : 'HOD assigned successfully' });
+        setShowHODModal(false);
+        setEditingHOD(null);
+        loadDepartments();
+        loadHODs();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to assign HOD' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error assigning HOD' });
+      console.error('Assign HOD error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteDepartment = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this department?')) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(api.admin.deleteDepartment(id), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Department deleted successfully' });
+        loadDepartments();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to delete department' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error deleting department' });
+      console.error('Delete department error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteBranch = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this branch?')) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(api.admin.deleteBranch(id), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: 'Branch deleted successfully' });
+        loadBranches();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to delete branch' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error deleting branch' });
+      console.error('Delete branch error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveHOD = async (departmentId) => {
+    if (!window.confirm('Are you sure you want to remove the HOD from this department?')) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(api.admin.removeHOD(departmentId), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setMessage({ type: 'success', text: 'HOD removed successfully' });
+        loadDepartments();
+        loadHODs();
+        loadDashboardData();
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to remove HOD' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Error removing HOD' });
+      console.error('Remove HOD error:', error);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const exportToCSV = (data, filename, type) => {
@@ -567,7 +1255,17 @@ const AdminDashboard = () => {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="admin-tabs">
+      <nav className="admin-tabs" style={{
+        background: 'white',
+        padding: '1rem',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        marginBottom: '2rem',
+        display: 'flex',
+        gap: '0.5rem',
+        flexWrap: 'wrap',
+        border: '1px solid #e5e7eb'
+      }}>
         {[
           { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
           { id: 'teachers', label: '👨‍🏫 Teachers', icon: '👨‍🏫' },
@@ -581,8 +1279,37 @@ const AdminDashboard = () => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`admin-tab ${activeTab === tab.id ? 'active' : ''}`}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: activeTab === tab.id 
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                : '#f3f4f6',
+              color: activeTab === tab.id ? 'white' : '#6b7280',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '0.875rem',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: activeTab === tab.id ? '0 2px 4px rgba(102, 126, 234, 0.3)' : 'none'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.background = '#e5e7eb';
+                e.currentTarget.style.color = '#1f2937';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.background = '#f3f4f6';
+                e.currentTarget.style.color = '#6b7280';
+              }
+            }}
           >
-            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-icon" style={{ fontSize: '1.125rem' }}>{tab.icon}</span>
             <span className="tab-label">{tab.label.replace(/[^\w\s]/g, '')}</span>
           </button>
         ))}
@@ -594,70 +1321,348 @@ const AdminDashboard = () => {
         {activeTab === 'dashboard' && (
           <div className="dashboard-grid">
             {/* Statistics Cards */}
-            <div className="stats-grid">
-              <div className="stat-card stat-card-blue">
-                <div className="stat-icon">👨‍🏫</div>
-                <div className="stat-info">
-                  <div className="stat-value">{statistics.teachers}</div>
-                  <div className="stat-label">Teachers</div>
+            <div className="stats-grid" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '1.5rem',
+              marginBottom: '2rem'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                color: 'white',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                transition: 'transform 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ fontSize: '3rem' }}>👨‍🏫</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>
+                    {statistics.teachers}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                    Teachers
+                  </div>
                 </div>
               </div>
-              <div className="stat-card stat-card-green">
-                <div className="stat-icon">🎓</div>
-                <div className="stat-info">
-                  <div className="stat-value">{statistics.students}</div>
-                  <div className="stat-label">Students</div>
+              
+              <div style={{
+                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                color: 'white',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                transition: 'transform 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ fontSize: '3rem' }}>🎓</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>
+                    {statistics.students}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                    Students
+                  </div>
                 </div>
               </div>
-              <div className="stat-card stat-card-orange">
-                <div className="stat-icon">👨‍👩‍👧‍👦</div>
-                <div className="stat-info">
-                  <div className="stat-value">{statistics.parents}</div>
-                  <div className="stat-label">Parents</div>
+              
+              <div style={{
+                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                color: 'white',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                transition: 'transform 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ fontSize: '3rem' }}>👨‍👩‍👧‍👦</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>
+                    {statistics.parents}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                    Parents
+                  </div>
                 </div>
               </div>
-              <div className="stat-card stat-card-purple">
-                <div className="stat-icon">📢</div>
-                <div className="stat-info">
-                  <div className="stat-value">{statistics.notices}</div>
-                  <div className="stat-label">Notices</div>
+              
+              <div style={{
+                background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                color: 'white',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                transition: 'transform 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ fontSize: '3rem' }}>📢</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>
+                    {statistics.notices}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                    Notices
+                  </div>
                 </div>
               </div>
-              <div className="stat-card stat-card-pink">
-                <div className="stat-icon">🏛️</div>
-                <div className="stat-info">
-                  <div className="stat-value">{branches.length}</div>
-                  <div className="stat-label">Branches</div>
+              
+              <div style={{
+                background: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                color: 'white',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                transition: 'transform 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ fontSize: '3rem' }}>🏛️</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1' }}>
+                    {branches.length}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                    Branches
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Quick Actions */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+              marginBottom: '2rem'
+            }}>
+              <button
+                onClick={() => { setActiveTab('students'); openStudentModal(); }}
+                style={{
+                  padding: '1.5rem',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '1rem',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontSize: '2.5rem' }}>➕</span>
+                <span>Add Student</span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('teachers'); openTeacherModal(); }}
+                style={{
+                  padding: '1.5rem',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '1rem',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontSize: '2.5rem' }}>👨‍🏫</span>
+                <span>Add Teacher</span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('departments'); openDepartmentModal(); }}
+                style={{
+                  padding: '1.5rem',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '1rem',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontSize: '2.5rem' }}>🏛️</span>
+                <span>Create Department</span>
+              </button>
+              <button
+                onClick={() => { setActiveTab('departments'); openBranchModal(); }}
+                style={{
+                  padding: '1.5rem',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '1rem',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontSize: '2.5rem' }}>🌿</span>
+                <span>Create Branch</span>
+              </button>
+            </div>
+
             {/* Charts */}
-            <div className="charts-grid">
-              <div className="chart-card">
-                <h3>User Distribution</h3>
+            <div className="charts-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+              gap: '1.5rem',
+              marginBottom: '2rem'
+            }}>
+              <div className="chart-card" style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '1.5rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 1rem 0', 
+                  color: '#1f2937', 
+                  fontSize: '1.25rem',
+                  fontWeight: '600',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  📊 User Distribution
+                </h3>
                 <Doughnut data={userDistributionData} options={{
                   responsive: true,
                   maintainAspectRatio: true,
-                  plugins: { legend: { position: 'bottom' } }
+                  plugins: { 
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                      backgroundColor: 'rgba(0,0,0,0.8)',
+                      padding: 12,
+                      titleFont: { size: 14 },
+                      bodyFont: { size: 13 }
+                    }
+                  }
                 }} />
               </div>
               {branchDistributionData && (
-                <div className="chart-card">
-                  <h3>Students by Branch</h3>
+                <div className="chart-card" style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '1.5rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h3 style={{ 
+                    margin: '0 0 1rem 0', 
+                    color: '#1f2937', 
+                    fontSize: '1.25rem',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    📈 Students by Branch
+                  </h3>
                   <Bar data={branchDistributionData} options={{
                     responsive: true,
                     maintainAspectRatio: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                    plugins: { 
+                      legend: { display: false },
+                      tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 12,
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 13 }
+                      }
+                    },
+                    scales: { 
+                      y: { 
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                      } 
+                    }
                   }} />
                 </div>
               )}
             </div>
 
             {/* Send Notice Form */}
-            <div className="dashboard-card-modern">
-              <h2>📢 Send Notice</h2>
+            <div className="dashboard-card-modern" style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem', 
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid #f3f4f6'
+              }}>
+                <span style={{ fontSize: '2rem' }}>📢</span>
+                <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>Send Notice</h2>
+              </div>
               <form onSubmit={handleSendNotice} className="notice-form">
                 <div className="form-row">
                   <input
@@ -720,6 +1725,331 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Departments Tab */}
+        {activeTab === 'departments' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* Departments Section */}
+            <div className="dashboard-card-modern" style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div className="card-header" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid #f3f4f6'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '2rem' }}>🏛️</span>
+                  <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
+                    Departments 
+                    <span style={{ 
+                      marginLeft: '0.5rem',
+                      padding: '0.25rem 0.75rem',
+                      background: '#eff6ff',
+                      color: '#3b82f6',
+                      borderRadius: '20px',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}>
+                      {departments.length}
+                    </span>
+                  </h2>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button 
+                    onClick={() => openDepartmentModal()}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    ➕ Add Department
+                  </button>
+                  <button 
+                    onClick={() => openHODModal()}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: '#8b5cf6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    👤 Assign HOD
+                  </button>
+                </div>
+              </div>
+              {departments.length > 0 ? (
+                <div className="table-wrapper">
+                  <table className="modern-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Code</th>
+                        <th>HOD</th>
+                        <th>Students</th>
+                        <th>Faculty</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {departments.map(dept => (
+                        <tr key={dept.id}>
+                          <td><strong>{dept.name}</strong></td>
+                          <td><span className="badge badge-blue">{dept.code}</span></td>
+                          <td>{dept.hod_name || '-'}</td>
+                          <td>{dept.total_students || 0}</td>
+                          <td>{dept.total_faculty || 0}</td>
+                          <td>
+                            <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => openDepartmentModal(dept)} 
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteDepartment(dept.id)} 
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="no-data">No departments found</p>
+              )}
+            </div>
+
+            {/* Branches Section */}
+            <div className="dashboard-card-modern" style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div className="card-header" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid #f3f4f6'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '2rem' }}>🌿</span>
+                  <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
+                    Branches 
+                    <span style={{ 
+                      marginLeft: '0.5rem',
+                      padding: '0.25rem 0.75rem',
+                      background: '#f0fdf4',
+                      color: '#10b981',
+                      borderRadius: '20px',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}>
+                      {branches.length}
+                    </span>
+                  </h2>
+                </div>
+                <button 
+                  onClick={() => openBranchModal()}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  ➕ Add Branch
+                </button>
+              </div>
+              {branches.length > 0 ? (
+                <div className="table-wrapper">
+                  <table className="modern-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Code</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {branches.map(branch => (
+                        <tr key={branch.id}>
+                          <td><strong>{branch.name || branch.branch_name}</strong></td>
+                          <td><span className="badge badge-green">{branch.code}</span></td>
+                          <td>{branch.description || '-'}</td>
+                          <td>
+                            <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => openBranchModal(branch)} 
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteBranch(branch.id)} 
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="no-data">No branches found</p>
+              )}
+            </div>
+
+            {/* HODs List */}
+            {hods.length > 0 && (
+              <div className="dashboard-card-modern" style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div className="card-header" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1.5rem',
+                  paddingBottom: '1rem',
+                  borderBottom: '2px solid #f3f4f6'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '2rem' }}>👤</span>
+                    <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
+                      Heads of Departments
+                    </h2>
+                  </div>
+                </div>
+                <div className="table-wrapper">
+                  <table className="modern-table">
+                    <thead>
+                      <tr>
+                        <th>Department</th>
+                        <th>HOD Name</th>
+                        <th>Teacher Email</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {hods.map(hod => {
+                        const dept = departments.find(d => d.id === hod.department_id);
+                        return (
+                          <tr key={hod.department_id}>
+                            <td><strong>{hod.department_name}</strong></td>
+                            <td>{hod.hod_name || '-'}</td>
+                            <td>{hod.teacher_email || '-'}</td>
+                            <td>
+                              <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button 
+                                  onClick={() => dept && openHODModal(dept)} 
+                                  style={{
+                                    padding: '0.5rem 1rem',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  ✏️ Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleRemoveHOD(hod.department_id)} 
+                                  style={{
+                                    padding: '0.5rem 1rem',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem'
+                                  }}
+                                >
+                                  🗑️ Remove
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Teachers Tab */}
         {activeTab === 'teachers' && (
           <div className="dashboard-card-modern">
@@ -749,9 +2079,36 @@ const AdminDashboard = () => {
                         <td><span className="badge badge-blue">{teacher.branch_name || teacher.branch || '-'}</span></td>
                         <td>{teacher.phone || '-'}</td>
                         <td>
-                          <div className="action-buttons">
-                            <button onClick={() => handleViewDetails(teacher, 'teacher')} className="btn-view">👁️ View</button>
-                            <button onClick={() => handleDeleteUser('teacher', teacher.id)} className="btn-delete">🗑️ Delete</button>
+                          <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              onClick={() => openTeacherModal(teacher)} 
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser('teacher', teacher.id)} 
+                              className="btn-delete"
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -767,13 +2124,92 @@ const AdminDashboard = () => {
 
         {/* Students Tab */}
         {activeTab === 'students' && (
-          <div className="dashboard-card-modern">
-            <div className="card-header">
-              <h2>🎓 All Students ({students.length})</h2>
-              <button onClick={() => exportToCSV(students, 'students', 'student')} className="btn-export">
-                📥 Export CSV
-              </button>
+          <div className="dashboard-card-modern" style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div className="card-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+              paddingBottom: '1rem',
+              borderBottom: '2px solid #f3f4f6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '2rem' }}>🎓</span>
+                <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
+                  All Students 
+                  <span style={{ 
+                    marginLeft: '0.5rem',
+                    padding: '0.25rem 0.75rem',
+                    background: '#f0fdf4',
+                    color: '#10b981',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}>
+                    {students.length}
+                  </span>
+                </h2>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  onClick={() => openStudentModal()}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  ➕ Add Student
+                </button>
+                <button 
+                  onClick={() => exportToCSV(students, 'students', 'student')} 
+                  className="btn-export"
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.875rem',
+                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  📥 Export CSV
+                </button>
+              </div>
             </div>
+            {message.text && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                borderRadius: '8px',
+                background: message.type === 'success' ? '#d1fae5' : '#fee2e2',
+                color: message.type === 'success' ? '#065f46' : '#991b1b',
+                border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`
+              }}>
+                {message.text}
+              </div>
+            )}
             {/* Filters */}
             <div className="filters-bar">
               <input
@@ -829,9 +2265,51 @@ const AdminDashboard = () => {
                         <td>{student.email || '-'}</td>
                         <td>{student.parent_email || '-'}</td>
                         <td>
-                          <div className="action-buttons">
-                            <button onClick={() => handleViewDetails(student, 'student')} className="btn-view">👁️ View</button>
-                            <button onClick={() => handleDeleteUser('student', student.id)} className="btn-delete">🗑️ Delete</button>
+                          <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              onClick={() => viewStudentDetails(student.id)} 
+                              className="btn-view"
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              👁️ View
+                            </button>
+                            <button 
+                              onClick={() => openStudentModal(student)} 
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser('student', student.id)} 
+                              className="btn-delete"
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -847,10 +2325,56 @@ const AdminDashboard = () => {
 
         {/* Parents Tab */}
         {activeTab === 'parents' && (
-          <div className="dashboard-card-modern">
-            <div className="card-header">
-              <h2>👨‍👩‍👧‍👦 All Parents ({parents.length})</h2>
-              <button onClick={() => exportToCSV(parents, 'parents', 'parent')} className="btn-export">
+          <div className="dashboard-card-modern" style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div className="card-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+              paddingBottom: '1rem',
+              borderBottom: '2px solid #f3f4f6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '2rem' }}>👨‍👩‍👧‍👦</span>
+                <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
+                  All Parents 
+                  <span style={{ 
+                    marginLeft: '0.5rem',
+                    padding: '0.25rem 0.75rem',
+                    background: '#eff6ff',
+                    color: '#3b82f6',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}>
+                    {parents.length}
+                  </span>
+                </h2>
+              </div>
+              <button 
+                onClick={() => exportToCSV(parents, 'parents', 'parent')} 
+                className="btn-export"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.875rem',
+                  boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
                 📥 Export CSV
               </button>
             </div>
@@ -894,34 +2418,215 @@ const AdminDashboard = () => {
 
         {/* Notices Tab */}
         {activeTab === 'notices' && (
-          <div className="dashboard-card-modern">
-            <h2>📢 All Notices ({notices.length})</h2>
-            {notices.length > 0 ? (
-              <div className="notices-list">
-                {notices.map(notice => (
-                  <div key={notice.id} className="notice-card" style={{
-                    borderLeftColor: notice.priority === 'urgent' ? '#ef4444' :
-                                     notice.priority === 'high' ? '#f59e0b' :
-                                     notice.priority === 'medium' ? '#3b82f6' : '#6b7280'
-                  }}>
-                    <div className="notice-header">
-                      <h3>{notice.title}</h3>
-                      <span className={`priority-badge priority-${notice.priority}`}>
-                        {notice.priority?.toUpperCase() || 'NORMAL'}
-                      </span>
-                    </div>
-                    <p className="notice-message">{notice.message}</p>
-                    <div className="notice-footer">
-                      <span>📤 To: <strong>{notice.recipient_type}</strong></span>
-                      <span>👤 By: <strong>{notice.sender_name || 'Admin'}</strong></span>
-                      <span>🕐 {new Date(notice.created_at).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* Send Notice Form */}
+            <div className="dashboard-card-modern" style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem', 
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid #f3f4f6'
+              }}>
+                <span style={{ fontSize: '2rem' }}>📢</span>
+                <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>Send Notice</h2>
               </div>
-            ) : (
-              <p className="no-data">No notices found</p>
-            )}
+              {message.text && (
+                <div style={{
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1rem',
+                  borderRadius: '8px',
+                  background: message.type === 'success' ? '#d1fae5' : '#fee2e2',
+                  color: message.type === 'success' ? '#065f46' : '#991b1b',
+                  border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`
+                }}>
+                  {message.text}
+                </div>
+              )}
+              <form onSubmit={handleSendNotice} className="notice-form">
+                <div className="form-row">
+                  <input
+                    type="text"
+                    placeholder="Notice Title *"
+                    value={noticeForm.title}
+                    onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-row">
+                  <textarea
+                    placeholder="Notice Message *"
+                    value={noticeForm.message}
+                    onChange={(e) => setNoticeForm({ ...noticeForm, message: e.target.value })}
+                    rows="4"
+                    required
+                  />
+                </div>
+                <div className="form-row form-row-inline">
+                  <select
+                    value={noticeForm.recipient_type}
+                    onChange={(e) => setNoticeForm({ ...noticeForm, recipient_type: e.target.value, branch_id: '' })}
+                  >
+                    <option value="all">All Users</option>
+                    <option value="student">All Students</option>
+                    <option value="teacher">All Teachers</option>
+                    <option value="parent">All Parents</option>
+                    <option value="branch">Specific Branch</option>
+                  </select>
+                  <select
+                    value={noticeForm.priority}
+                    onChange={(e) => setNoticeForm({ ...noticeForm, priority: e.target.value })}
+                  >
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                  </select>
+                </div>
+                {noticeForm.recipient_type === 'branch' && (
+                  <div className="form-row">
+                    <select
+                      value={noticeForm.branch_id}
+                      onChange={(e) => setNoticeForm({ ...noticeForm, branch_id: e.target.value })}
+                      required
+                    >
+                      <option value="">Select Branch</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? 'Sending...' : '📢 Send Notice'}
+                </button>
+              </form>
+            </div>
+
+            {/* All Notices List */}
+            <div className="dashboard-card-modern" style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div className="card-header" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid #f3f4f6'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '2rem' }}>📢</span>
+                  <h2 style={{ margin: 0, color: '#1f2937', fontSize: '1.5rem' }}>
+                    All Notices 
+                    <span style={{ 
+                      marginLeft: '0.5rem',
+                      padding: '0.25rem 0.75rem',
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      borderRadius: '20px',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}>
+                      {notices.length}
+                    </span>
+                  </h2>
+                </div>
+              </div>
+              {notices.length > 0 ? (
+                <div className="table-wrapper">
+                  <table className="modern-table">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Message</th>
+                        <th>Recipient</th>
+                        <th>Priority</th>
+                        <th>Sender</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {notices.map(notice => (
+                        <tr key={notice.id}>
+                          <td><strong>{notice.title}</strong></td>
+                          <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {notice.message}
+                          </td>
+                          <td>
+                            <span className="badge badge-blue">
+                              {notice.recipient_type === 'all' ? 'All Users' :
+                               notice.recipient_type === 'student' ? 'All Students' :
+                               notice.recipient_type === 'teacher' ? 'All Teachers' :
+                               notice.recipient_type === 'parent' ? 'All Parents' :
+                               notice.recipient_type === 'branch' ? `Branch: ${notice.branch_id}` :
+                               notice.recipient_type}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge priority-${notice.priority}`} style={{
+                              background: notice.priority === 'high' ? '#fee2e2' :
+                                         notice.priority === 'medium' ? '#dbeafe' : '#f3f4f6',
+                              color: notice.priority === 'high' ? '#991b1b' :
+                                     notice.priority === 'medium' ? '#1e40af' : '#374151'
+                            }}>
+                              {notice.priority?.toUpperCase() || 'LOW'}
+                            </span>
+                          </td>
+                          <td>{notice.sender_name || 'Admin'}</td>
+                          <td>{new Date(notice.created_at).toLocaleDateString()}</td>
+                          <td>
+                            <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button 
+                                onClick={() => openNoticeModal(notice)} 
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteNotice(notice.id)} 
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="no-data">No notices found</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -1291,17 +2996,540 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {/* Student Modal */}
+      {showStudentModal && (
+        <div className="modal-overlay" onClick={() => setShowStudentModal(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '95%', maxHeight: '95vh', 
+            overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            <div className="modal-header" style={{ 
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+              padding: '1.5rem 2rem', borderBottom: '2px solid #f3f4f6', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            }}>
+              <h2 style={{ margin: 0, color: 'white', fontSize: '1.5rem', fontWeight: '700' }}>
+                {editingStudent ? '✏️ Edit Student' : '➕ Add New Student'}
+              </h2>
+              <button onClick={() => setShowStudentModal(false)} style={{ 
+                background: 'rgba(255,255,255,0.2)', border: 'none', fontSize: '1.5rem', 
+                cursor: 'pointer', color: 'white', width: '36px', height: '36px', 
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.3)'}
+              onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+              >×</button>
+            </div>
+            <form onSubmit={handleSaveStudent} style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Roll No *</label>
+                  <input type="text" value={studentForm.roll_no} onChange={(e) => setStudentForm({...studentForm, roll_no: e.target.value})} 
+                    required style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Name *</label>
+                  <input type="text" value={studentForm.name} onChange={(e) => setStudentForm({...studentForm, name: e.target.value})} 
+                    required style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Email</label>
+                  <input type="email" value={studentForm.email} onChange={(e) => setStudentForm({...studentForm, email: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>
+                    {editingStudent ? 'New Password' : 'Password *'}
+                  </label>
+                  <input type="password" value={studentForm.password} onChange={(e) => setStudentForm({...studentForm, password: e.target.value})} 
+                    required={!editingStudent} style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Phone</label>
+                  <input type="tel" value={studentForm.phone} onChange={(e) => setStudentForm({...studentForm, phone: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Branch</label>
+                  <select value={studentForm.branch_id} onChange={(e) => setStudentForm({...studentForm, branch_id: e.target.value})}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', background: 'white', boxSizing: 'border-box' }}>
+                    <option value="">Select Branch</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Year</label>
+                  <input type="number" min="1" max="3" value={studentForm.year} onChange={(e) => setStudentForm({...studentForm, year: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Semester</label>
+                  <input type="number" min="1" max="6" value={studentForm.semester} onChange={(e) => setStudentForm({...studentForm, semester: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Section</label>
+                  <input type="text" value={studentForm.section} onChange={(e) => setStudentForm({...studentForm, section: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>DOB</label>
+                  <input type="date" value={studentForm.dob} onChange={(e) => setStudentForm({...studentForm, dob: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Father Name</label>
+                  <input type="text" value={studentForm.father_name} onChange={(e) => setStudentForm({...studentForm, father_name: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Mother Name</label>
+                  <input type="text" value={studentForm.mother_name} onChange={(e) => setStudentForm({...studentForm, mother_name: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Parent Email</label>
+                  <input type="email" value={studentForm.parent_email} onChange={(e) => setStudentForm({...studentForm, parent_email: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Parent Phone</label>
+                  <input type="tel" value={studentForm.parent_phone} onChange={(e) => setStudentForm({...studentForm, parent_phone: e.target.value})} 
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.8rem' }}>Status</label>
+                  <select value={studentForm.status} onChange={(e) => setStudentForm({...studentForm, status: e.target.value})}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', background: 'white', boxSizing: 'border-box' }}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '2px solid #f3f4f6' }}>
+                <button type="button" onClick={() => setShowStudentModal(false)} style={{ 
+                  padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', 
+                  borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.875rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.background = '#4b5563'}
+                onMouseLeave={(e) => e.target.style.background = '#6b7280'}
+                >Cancel</button>
+                <button type="submit" disabled={loading} style={{ 
+                  padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', 
+                  borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: '600', 
+                  fontSize: '0.875rem', opacity: loading ? 0.7 : 1, transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => !loading && (e.target.style.background = '#2563eb')}
+                onMouseLeave={(e) => !loading && (e.target.style.background = '#3b82f6')}
+                >{loading ? '⏳ Saving...' : '💾 Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Modal */}
+      {showTeacherModal && (
+        <div className="modal-overlay" onClick={() => setShowTeacherModal(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '500px', width: '90%'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}</h2>
+              <button onClick={() => setShowTeacherModal(false)} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+            </div>
+            <form onSubmit={handleSaveTeacher}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div><label>Name *</label><input type="text" value={teacherForm.name} onChange={(e) => setTeacherForm({...teacherForm, name: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Email *</label><input type="email" value={teacherForm.email} onChange={(e) => setTeacherForm({...teacherForm, email: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>{editingTeacher ? 'New Password (leave blank to keep current)' : 'Password *'}</label><input type="password" value={teacherForm.password} onChange={(e) => setTeacherForm({...teacherForm, password: e.target.value})} required={!editingTeacher} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Phone</label><input type="tel" value={teacherForm.phone} onChange={(e) => setTeacherForm({...teacherForm, phone: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Branch</label><select value={teacherForm.branch_id} onChange={(e) => setTeacherForm({...teacherForm, branch_id: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}><option value="">Select Branch</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>)}</select></div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowTeacherModal(false)} style={{ padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{loading ? 'Saving...' : 'Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Department Modal */}
+      {showDepartmentModal && (
+        <div className="modal-overlay" onClick={() => setShowDepartmentModal(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '500px', width: '90%'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{editingDepartment ? 'Edit Department' : 'Add New Department'}</h2>
+              <button onClick={() => setShowDepartmentModal(false)} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+            </div>
+            <form onSubmit={handleSaveDepartment}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div><label>Name *</label><input type="text" value={departmentForm.name} onChange={(e) => setDepartmentForm({...departmentForm, name: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Code *</label><input type="text" value={departmentForm.code} onChange={(e) => setDepartmentForm({...departmentForm, code: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Description</label><textarea value={departmentForm.description} onChange={(e) => setDepartmentForm({...departmentForm, description: e.target.value})} rows="3" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowDepartmentModal(false)} style={{ padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{loading ? 'Saving...' : 'Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Branch Modal */}
+      {showBranchModal && (
+        <div className="modal-overlay" onClick={() => setShowBranchModal(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '500px', width: '90%'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{editingBranch ? 'Edit Branch' : 'Add New Branch'}</h2>
+              <button onClick={() => setShowBranchModal(false)} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+            </div>
+            <form onSubmit={handleSaveBranch}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div><label>Name *</label><input type="text" value={branchForm.name} onChange={(e) => setBranchForm({...branchForm, name: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Code *</label><input type="text" value={branchForm.code} onChange={(e) => setBranchForm({...branchForm, code: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+                <div><label>Description</label><textarea value={branchForm.description} onChange={(e) => setBranchForm({...branchForm, description: e.target.value})} rows="3" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }} /></div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowBranchModal(false)} style={{ padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={loading} style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>{loading ? 'Saving...' : 'Save'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Notice Edit Modal */}
+      {showNoticeModal && (
+        <div className="modal-overlay" onClick={() => { setShowNoticeModal(false); setEditingNotice(null); }} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{editingNotice ? 'Edit Notice' : 'Send Notice'}</h2>
+              <button onClick={() => { setShowNoticeModal(false); setEditingNotice(null); }} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+            </div>
+            <form onSubmit={editingNotice ? handleUpdateNotice : handleSendNotice}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label>Title *</label>
+                  <input 
+                    type="text" 
+                    value={noticeForm.title} 
+                    onChange={(e) => setNoticeForm({...noticeForm, title: e.target.value})} 
+                    required 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                  />
+                </div>
+                <div>
+                  <label>Message *</label>
+                  <textarea 
+                    value={noticeForm.message} 
+                    onChange={(e) => setNoticeForm({...noticeForm, message: e.target.value})} 
+                    rows="4"
+                    required 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label>Recipient *</label>
+                    <select 
+                      value={noticeForm.recipient_type} 
+                      onChange={(e) => setNoticeForm({...noticeForm, recipient_type: e.target.value, branch_id: ''})} 
+                      required
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                    >
+                      <option value="all">All Users</option>
+                      <option value="student">All Students</option>
+                      <option value="teacher">All Teachers</option>
+                      <option value="parent">All Parents</option>
+                      <option value="branch">Specific Branch</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Priority *</label>
+                    <select 
+                      value={noticeForm.priority} 
+                      onChange={(e) => setNoticeForm({...noticeForm, priority: e.target.value})} 
+                      required
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                    >
+                      <option value="low">Low Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="high">High Priority</option>
+                    </select>
+                  </div>
+                </div>
+                {noticeForm.recipient_type === 'branch' && (
+                  <div>
+                    <label>Branch *</label>
+                    <select 
+                      value={noticeForm.branch_id} 
+                      onChange={(e) => setNoticeForm({...noticeForm, branch_id: e.target.value})} 
+                      required
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                    >
+                      <option value="">Select Branch</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowNoticeModal(false); setEditingNotice(null); }} 
+                  style={{ padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  {loading ? (editingNotice ? 'Updating...' : 'Sending...') : (editingNotice ? 'Update Notice' : 'Send Notice')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Notice Edit Modal */}
+      {showNoticeModal && (
+        <div className="modal-overlay" onClick={() => { setShowNoticeModal(false); setEditingNotice(null); }} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{editingNotice ? 'Edit Notice' : 'Send Notice'}</h2>
+              <button onClick={() => { setShowNoticeModal(false); setEditingNotice(null); }} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+            </div>
+            <form onSubmit={editingNotice ? handleUpdateNotice : handleSendNotice}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label>Title *</label>
+                  <input 
+                    type="text" 
+                    value={noticeForm.title} 
+                    onChange={(e) => setNoticeForm({...noticeForm, title: e.target.value})} 
+                    required 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                  />
+                </div>
+                <div>
+                  <label>Message *</label>
+                  <textarea 
+                    value={noticeForm.message} 
+                    onChange={(e) => setNoticeForm({...noticeForm, message: e.target.value})} 
+                    rows="4"
+                    required 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label>Recipient *</label>
+                    <select 
+                      value={noticeForm.recipient_type} 
+                      onChange={(e) => setNoticeForm({...noticeForm, recipient_type: e.target.value, branch_id: ''})} 
+                      required
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                    >
+                      <option value="all">All Users</option>
+                      <option value="student">All Students</option>
+                      <option value="teacher">All Teachers</option>
+                      <option value="parent">All Parents</option>
+                      <option value="branch">Specific Branch</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Priority *</label>
+                    <select 
+                      value={noticeForm.priority} 
+                      onChange={(e) => setNoticeForm({...noticeForm, priority: e.target.value})} 
+                      required
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                    >
+                      <option value="low">Low Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="high">High Priority</option>
+                    </select>
+                  </div>
+                </div>
+                {noticeForm.recipient_type === 'branch' && (
+                  <div>
+                    <label>Branch *</label>
+                    <select 
+                      value={noticeForm.branch_id} 
+                      onChange={(e) => setNoticeForm({...noticeForm, branch_id: e.target.value})} 
+                      required
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                    >
+                      <option value="">Select Branch</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name || b.branch_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowNoticeModal(false); setEditingNotice(null); }} 
+                  style={{ padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  {loading ? (editingNotice ? 'Updating...' : 'Sending...') : (editingNotice ? 'Update Notice' : 'Send Notice')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* HOD Assignment Modal */}
+      {showHODModal && (
+        <div className="modal-overlay" onClick={() => setShowHODModal(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '500px', width: '90%'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{editingHOD ? 'Edit HOD' : 'Assign HOD'}</h2>
+              <button onClick={() => { setShowHODModal(false); setEditingHOD(null); }} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
+            </div>
+            {editingHOD && editingHOD.hod_name && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                borderRadius: '8px',
+                background: '#fef3c7',
+                color: '#92400e',
+                border: '1px solid #fbbf24'
+              }}>
+                <strong>Current HOD:</strong> {editingHOD.hod_name}
+              </div>
+            )}
+            <form onSubmit={handleAssignHOD}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label>Department *</label>
+                  <select 
+                    value={hodForm.department_id} 
+                    onChange={(e) => setHODForm({...hodForm, department_id: e.target.value})} 
+                    required 
+                    disabled={!!editingHOD}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem', 
+                      borderRadius: '8px', 
+                      border: '1px solid #d1d5db',
+                      background: editingHOD ? '#f3f4f6' : 'white',
+                      cursor: editingHOD ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} {d.hod_name ? `(Current HOD: ${d.hod_name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label>Teacher *</label>
+                  <select 
+                    value={hodForm.teacher_id} 
+                    onChange={(e) => setHODForm({...hodForm, teacher_id: e.target.value})} 
+                    required 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                  >
+                    <option value="">Select Teacher</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.email}) {t.branch_name ? `- ${t.branch_name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  onClick={() => { setShowHODModal(false); setEditingHOD(null); }} 
+                  style={{ padding: '0.75rem 1.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  style={{ padding: '0.75rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  {loading ? (editingHOD ? 'Updating...' : 'Assigning...') : (editingHOD ? 'Update HOD' : 'Assign HOD')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* User Details Modal */}
-      {showDetailsModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{selectedUser.type.toUpperCase()} Details</h2>
-              <button onClick={() => setShowDetailsModal(false)} className="modal-close">×</button>
+      {showDetailsModal && (viewingStudent || selectedUser) && (
+        <div className="modal-overlay" onClick={() => { setShowDetailsModal(false); setViewingStudent(null); }} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{
+            background: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflowY: 'auto'
+          }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>{(viewingStudent || selectedUser)?.type ? (viewingStudent || selectedUser).type.toUpperCase() : 'Student'} Details</h2>
+              <button onClick={() => { setShowDetailsModal(false); setViewingStudent(null); }} style={{ background: 'none', border: 'none', fontSize: '2rem', cursor: 'pointer' }}>×</button>
             </div>
             <div className="modal-body">
-              {Object.entries(selectedUser).filter(([key]) => key !== 'type' && key !== 'password').map(([key, value]) => (
-                <div key={key} className="detail-row">
+              {Object.entries(viewingStudent || selectedUser || {}).filter(([key]) => key !== 'type' && key !== 'password').map(([key, value]) => (
+                <div key={key} className="detail-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
                   <strong>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong>
                   <span>{value || '-'}</span>
                 </div>

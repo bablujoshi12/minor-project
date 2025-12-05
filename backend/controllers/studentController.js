@@ -75,13 +75,13 @@ const getAttendanceDashboard = async (req, res) => {
 
     const student = students[0];
 
-    // Get attendance data for last 30 days
+    // Get attendance data for last 30 days (one record per date)
     const [attendance] = await pool.execute(
-      `SELECT date, status, COUNT(*) as count 
+      `SELECT date, status, remarks
        FROM attendance 
        WHERE student_id = ? AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-       GROUP BY date, status
-       ORDER BY date DESC`,
+       ORDER BY date DESC
+       LIMIT 100`,
       [student.id]
     );
 
@@ -90,7 +90,9 @@ const getAttendanceDashboard = async (req, res) => {
       `SELECT 
          COUNT(DISTINCT date) as total_days,
          SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present_days,
-         SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_days
+         SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent_days,
+         SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late_days,
+         SUM(CASE WHEN status = 'half_day' THEN 1 ELSE 0 END) as half_day_days
        FROM attendance 
        WHERE student_id = ? AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
       [student.id]
@@ -120,9 +122,15 @@ const getAttendanceDashboard = async (req, res) => {
         totalDays,
         presentDays,
         absentDays: stats[0]?.absent_days || 0,
+        lateDays: stats[0]?.late_days || 0,
+        halfDayDays: stats[0]?.half_day_days || 0,
         percentage: parseFloat(percentage),
-        monthlyData: monthly,
-        dailyData: attendance
+        monthlyData: monthly.map(m => ({
+          month: m.month,
+          total_days: m.total_days,
+          present_days: m.present_days
+        })),
+        attendance: attendance // Daily attendance records
       }
     });
   } catch (error) {
@@ -132,24 +140,28 @@ const getAttendanceDashboard = async (req, res) => {
 };
 
 // Get Test Marks (from marks table)
+// Only show marks for completed semesters
 const getTestMarks = async (req, res) => {
   try {
     const studentId = req.user.userId;
 
-    const [students] = await pool.execute('SELECT id FROM students WHERE id = ?', [studentId]);
+    // Get student's current semester
+    const [students] = await pool.execute('SELECT id, semester as current_semester FROM students WHERE id = ?', [studentId]);
     if (students.length === 0) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    // Fetch from marks table
+    const currentSemester = students[0].current_semester || 1;
+
+    // Fetch from marks table - include current semester (<=)
     const [marks] = await pool.execute(
       `SELECT m.*, 
        (m.marks_obtained / m.max_marks * 100) as percentage,
        DATE_FORMAT(m.created_at, '%Y-%m-%d') as exam_date
        FROM marks m 
-       WHERE m.student_id = ? 
-       ORDER BY m.created_at DESC`,
-      [students[0].id]
+       WHERE m.student_id = ? AND m.semester <= ?
+       ORDER BY m.semester ASC, m.created_at DESC`,
+      [students[0].id, currentSemester]
     );
 
     // Format marks to match expected structure
@@ -174,16 +186,20 @@ const getTestMarks = async (req, res) => {
 };
 
 // Get Semester Results (from marks table - aggregated by semester)
+// Only show completed semesters (semesters less than current semester)
 const getSemesterResults = async (req, res) => {
   try {
     const studentId = req.user.userId;
 
-    const [students] = await pool.execute('SELECT id FROM students WHERE id = ?', [studentId]);
+    // Get student's current semester
+    const [students] = await pool.execute('SELECT id, semester as current_semester FROM students WHERE id = ?', [studentId]);
     if (students.length === 0) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
 
-    // Get marks grouped by semester
+    const currentSemester = students[0].current_semester || 1;
+
+    // Get marks grouped by semester - include current semester (<=)
     const [results] = await pool.execute(
       `SELECT 
        semester,
@@ -192,13 +208,13 @@ const getSemesterResults = async (req, res) => {
        SUM(marks_obtained) as total_obtained,
        SUM(max_marks) as total_max
        FROM marks 
-       WHERE student_id = ? 
+       WHERE student_id = ? AND semester <= ?
        GROUP BY semester
        ORDER BY semester ASC`,
-      [students[0].id]
+      [students[0].id, currentSemester]
     );
 
-    // Format results
+    // Format results - only return completed semesters
     const formatSemester = (sem) => {
       const suffixes = ['th', 'st', 'nd', 'rd'];
       const v = sem % 100;
@@ -206,7 +222,8 @@ const getSemesterResults = async (req, res) => {
     };
     
     const formattedResults = results.map(r => ({
-      semester: formatSemester(r.semester), // e.g., "3rd", "4th", "5th"
+      semester: formatSemester(r.semester),
+      semester_num: r.semester,
       percentage: parseFloat(r.percentage || 0).toFixed(2),
       status: parseFloat(r.percentage || 0) >= 40 ? 'passed' : 'failed',
       total_subjects: r.total_subjects,
@@ -343,14 +360,52 @@ const getAssignments = async (req, res) => {
     }
     const student = students[0];
 
-    const [assignments] = await pool.execute(
-      `SELECT a.*, t.name as teacher_name
-       FROM assignments a
-       JOIN teachers t ON a.teacher_id = t.id
-       WHERE a.branch_id = ?
-       ORDER BY a.created_at DESC`,
+    // Get student's branch name/code
+    const [branchInfo] = await pool.execute(
+      'SELECT b.code, b.name FROM branches b WHERE b.id = ?',
       [student.branch_id]
     );
+    const branchCode = branchInfo[0]?.code || null;
+    const branchName = branchInfo[0]?.name || null;
+
+    // Get only teacher-assigned assignments (student_id IS NULL, teacher_id IS NOT NULL) for this student's branch
+    // Handle both branch_id (INT) and branch (VARCHAR) columns
+    let assignments;
+    try {
+      // Try with branch_id first (newer schema)
+      [assignments] = await pool.execute(
+        `SELECT a.*, t.name as teacher_name,
+         (SELECT COUNT(*) FROM assignment_submissions WHERE assignment_id = a.id AND student_id = ?) as is_submitted,
+         (SELECT submission_date FROM assignment_submissions WHERE assignment_id = a.id AND student_id = ? LIMIT 1) as submission_date,
+         (SELECT file_url FROM assignment_submissions WHERE assignment_id = a.id AND student_id = ? LIMIT 1) as submitted_file_url
+         FROM assignments a
+         LEFT JOIN teachers t ON a.teacher_id = t.id
+         WHERE a.branch_id = ? 
+           AND a.student_id IS NULL 
+           AND a.teacher_id IS NOT NULL
+         ORDER BY a.created_at DESC`,
+        [studentId, studentId, studentId, student.branch_id]
+      );
+    } catch (error) {
+      // Fallback to branch VARCHAR column (older schema)
+      if (error.code === 'ER_BAD_FIELD_ERROR' && error.sqlMessage.includes('branch_id')) {
+        [assignments] = await pool.execute(
+          `SELECT a.*, t.name as teacher_name,
+           (SELECT COUNT(*) FROM assignment_submissions WHERE assignment_id = a.id AND student_id = ?) as is_submitted,
+           (SELECT submission_date FROM assignment_submissions WHERE assignment_id = a.id AND student_id = ? LIMIT 1) as submission_date,
+           (SELECT file_url FROM assignment_submissions WHERE assignment_id = a.id AND student_id = ? LIMIT 1) as submitted_file_url
+           FROM assignments a
+           LEFT JOIN teachers t ON a.teacher_id = t.id
+           WHERE (a.branch = ? OR a.branch = ?)
+             AND a.student_id IS NULL 
+             AND a.teacher_id IS NOT NULL
+           ORDER BY a.created_at DESC`,
+          [studentId, studentId, studentId, branchCode, branchName]
+        );
+      } else {
+        throw error;
+      }
+    }
 
     res.json({ success: true, data: assignments });
   } catch (error) {
@@ -359,8 +414,113 @@ const getAssignments = async (req, res) => {
   }
 };
 
+// Submit Assignment (for teacher-assigned assignments)
+const submitAssignment = async (req, res) => {
+  try {
+    const studentId = req.user.userId;
+    const { assignment_id } = req.body;
+
+    if (!assignment_id) {
+      return res.status(400).json({ success: false, message: 'Assignment ID is required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    // Get student info first
+    const [students] = await pool.execute('SELECT branch_id FROM students WHERE id = ?', [studentId]);
+    if (students.length === 0) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    const studentBranchId = students[0].branch_id;
+
+    // Get student's branch name/code for fallback
+    const [branchInfo] = await pool.execute(
+      'SELECT b.code, b.name FROM branches b WHERE b.id = ?',
+      [studentBranchId]
+    );
+    const branchCode = branchInfo[0]?.code || null;
+    const branchName = branchInfo[0]?.name || null;
+
+    // Verify assignment exists, is teacher-assigned (student_id IS NULL), has teacher_id, and matches student's branch
+    // Handle both branch_id (INT) and branch (VARCHAR) columns
+    let assignments;
+    try {
+      // Try with branch_id first (newer schema)
+      [assignments] = await pool.execute(
+        `SELECT a.* 
+         FROM assignments a
+         WHERE a.id = ? 
+           AND a.student_id IS NULL 
+           AND a.teacher_id IS NOT NULL
+           AND a.branch_id = ?`,
+        [assignment_id, studentBranchId]
+      );
+    } catch (error) {
+      // Fallback to branch VARCHAR column (older schema)
+      if (error.code === 'ER_BAD_FIELD_ERROR' && error.sqlMessage.includes('branch_id')) {
+        [assignments] = await pool.execute(
+          `SELECT a.* 
+           FROM assignments a
+           WHERE a.id = ? 
+             AND a.student_id IS NULL 
+             AND a.teacher_id IS NOT NULL
+             AND (a.branch = ? OR a.branch = ?)`,
+          [assignment_id, branchCode, branchName]
+        );
+      } else {
+        throw error;
+      }
+    }
+
+    if (assignments.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Assignment not found or you are not authorized to submit this assignment. Only teacher-assigned assignments can be submitted.' 
+      });
+    }
+
+    const assignment = assignments[0];
+
+    const fileUrl = `/uploads/assignments/${req.file.filename}`;
+    const submissionDate = new Date();
+    const dueDate = assignment.due_date ? new Date(assignment.due_date) : null;
+    const isLate = dueDate && submissionDate > dueDate;
+
+    // Check if submission already exists
+    const [existing] = await pool.execute(
+      'SELECT id FROM assignment_submissions WHERE assignment_id = ? AND student_id = ?',
+      [assignment_id, studentId]
+    );
+
+    if (existing.length > 0) {
+      // Update existing submission
+      await pool.execute(
+        `UPDATE assignment_submissions 
+         SET file_path = ?, file_url = ?, submission_date = ?, status = ?
+         WHERE id = ?`,
+        [fileUrl, fileUrl, submissionDate, isLate ? 'late' : 'submitted', existing[0].id]
+      );
+      return res.json({ success: true, message: 'Assignment resubmitted successfully' });
+    } else {
+      // Insert new submission
+      await pool.execute(
+        `INSERT INTO assignment_submissions (assignment_id, student_id, file_path, file_url, submission_date, status)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [assignment_id, studentId, fileUrl, fileUrl, submissionDate, isLate ? 'late' : 'submitted']
+      );
+      return res.json({ success: true, message: 'Assignment submitted successfully' });
+    }
+  } catch (error) {
+    console.error('Submit assignment error:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit assignment', error: error.message });
+  }
+};
+
 module.exports = {
   uploadAssignment,
+  submitAssignment,
   getAttendanceDashboard,
   getTestMarks,
   getSemesterResults,

@@ -178,6 +178,17 @@
   transform: translateX(5px);
 }
 
+.no-data-message {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #fde68a;
+  font-size: 0.95rem;
+  text-align: center;
+  font-style: italic;
+}
+
 /* Scrollbar */
 .dept-modal-content::-webkit-scrollbar {
   width: 8px;

@@ -36,6 +36,8 @@ const upload = multer({
 
 router.get('/students', teacherController.getStudentList);
 router.get('/assignments', teacherController.getAssignments);
+router.get('/assignments-with-counts', teacherController.getAssignmentsWithCounts);
+router.get('/assignment-submissions', teacherController.getAssignmentSubmissions);
 router.post('/assignments', upload.single('file'), teacherController.createAssignment);
 router.put('/assignments', teacherController.updateAssignment);
 router.get('/attendance-graph', teacherController.getAttendanceGraph);

@@ -24,9 +24,12 @@ const TeacherDashboard = () => {
   
   const [students, setStudents] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [assignmentsWithCounts, setAssignmentsWithCounts] = useState([]);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [assignmentSubmissions, setAssignmentSubmissions] = useState(null);
   const [attendanceGraph, setAttendanceGraph] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
+  const [teacherBranch, setTeacherBranch] = useState(null); // Store teacher's branch info
+  const [selectedSemester, setSelectedSemester] = useState('');
   const [messageTo, setMessageTo] = useState({ student_id: '', message: '', subject: '' });
   const [noticeForm, setNoticeForm] = useState({ title: '', message: '', recipient_type: 'student' });
   const [assignmentForm, setAssignmentForm] = useState({ title: '', description: '', subject: '', due_date: '', file: null });
@@ -35,26 +38,42 @@ const TeacherDashboard = () => {
   const [bulkAttendance, setBulkAttendance] = useState([]); // Array of { student_id, date, status }
   const [bulkMarks, setBulkMarks] = useState([]); // Array of { student_id, semester, subject, marks_obtained, max_marks, exam_type }
   const [notices, setNotices] = useState([]);
+  const [subjects, setSubjects] = useState([]); // Subjects list for dropdown
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadStudents();
     loadAssignments();
+    loadAssignmentsWithCounts();
     loadAttendanceGraph();
     loadNotices();
-  }, [selectedBranch, selectedYear]);
+  }, [selectedSemester]); // branch locked to teacher; filter: semester only
+
+  useEffect(() => {
+    if (marksForm.semester) {
+      loadSubjects(marksForm.semester);
+    } else {
+      setSubjects([]);
+    }
+  }, [marksForm.semester]);
 
   const loadStudents = async () => {
     try {
       const params = new URLSearchParams();
-      if (selectedBranch) params.append('branch', selectedBranch);
-      if (selectedYear) params.append('year', selectedYear);
+      // Removed branch filter - teacher can only see their own branch
+      if (selectedSemester) params.append('semester', selectedSemester);
 
       const response = await fetch(`${api.teacher.students}?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (data.success) setStudents(data.data);
+      if (data.success) {
+        setStudents(data.data);
+        // Store teacher's branch info from API response
+        if (data.teacher_branch) {
+          setTeacherBranch(data.teacher_branch);
+        }
+      }
     } catch (error) {
       console.error('Error loading students:', error);
     }
@@ -63,8 +82,8 @@ const TeacherDashboard = () => {
   const loadAssignments = async () => {
     try {
       const params = new URLSearchParams();
-      if (selectedBranch) params.append('branch', selectedBranch);
-      if (selectedYear) params.append('year', selectedYear);
+      // Removed branch filter - teacher can only see their own branch
+      if (selectedSemester) params.append('semester', selectedSemester);
 
       const response = await fetch(`${api.teacher.assignments}?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -76,11 +95,39 @@ const TeacherDashboard = () => {
     }
   };
 
+  const loadAssignmentsWithCounts = async () => {
+    try {
+      const response = await fetch(api.teacher.assignmentsWithCounts, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) setAssignmentsWithCounts(data.data || []);
+    } catch (error) {
+      console.error('Error loading assignments with counts:', error);
+    }
+  };
+
+  const loadAssignmentSubmissions = async (assignmentId) => {
+    try {
+      const response = await fetch(`${api.teacher.assignmentSubmissions}?assignment_id=${assignmentId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAssignmentSubmissions(data.data);
+        setSelectedAssignment(assignmentId);
+      }
+    } catch (error) {
+      console.error('Error loading submissions:', error);
+      alert('Failed to load submissions');
+    }
+  };
+
   const loadAttendanceGraph = async () => {
     try {
       const params = new URLSearchParams();
-      if (selectedBranch) params.append('branch', selectedBranch);
-      if (selectedYear) params.append('year', selectedYear);
+      // Removed branch filter - teacher can only see their own branch
+      if (selectedSemester) params.append('semester', selectedSemester);
 
       const response = await fetch(`${api.teacher.attendanceGraph}?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -122,6 +169,26 @@ const TeacherDashboard = () => {
       if (data.success) setNotices(data.data || []);
     } catch (error) {
       console.error('Error loading notices:', error);
+    }
+  };
+
+  const loadSubjects = async (semester) => {
+    try {
+      // Get teacher's branch code from stored branch info or user object
+      const branchCode = teacherBranch?.code || user?.branch_code || '';
+      let url = `${api.subjects.getBySemester(semester)}`;
+      if (branchCode) {
+        url += `?branch_code=${branchCode}`;
+      }
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success) {
+        setSubjects(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading subjects:', error);
+      setSubjects([]);
     }
   };
 
@@ -373,24 +440,31 @@ const TeacherDashboard = () => {
       <div className="dashboard-card">
         <h2>Filters</h2>
         <div className="filters">
-          <select value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
-            <option value="">All Years (Current Branch)</option>
-            <option value="IT">IT</option>
-            <option value="CIVIL">Civil</option>
-            <option value="ELECTRONICS">Electronics</option>
-            <option value="MECHANICAL">Mechanical</option>
-            <option value="PHARMACY">Pharmacy</option>
-          </select>
-          <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-            <option value="">All Years</option>
-            <option value="1">First Year</option>
-            <option value="2">Second Year</option>
-            <option value="3">Third Year</option>
-            <option value="4">Fourth Year</option>
-          </select>
+          {teacherBranch && (
+            <div style={{ 
+              padding: '0.75rem', 
+              backgroundColor: '#f3f4f6', 
+              borderRadius: '0.5rem',
+              marginBottom: '1rem',
+              border: '1px solid #e5e7eb'
+            }}>
+              <strong>📍 Your Branch:</strong> {teacherBranch.name} ({teacherBranch.code})
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)}>
+              <option value="">All Semesters</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+            </select>
+          </div>
         </div>
         <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-          📍 Showing students from your branch only
+          📍 You can only view and manage students from your assigned branch
         </p>
       </div>
 
@@ -398,30 +472,34 @@ const TeacherDashboard = () => {
       <div className="dashboard-card">
         <h2>Student List</h2>
         {students.length > 0 ? (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Roll No</th>
-                <th>Name</th>
-                <th>Branch</th>
-                <th>Year</th>
-                <th>Section</th>
-                <th>Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id}>
-                  <td>{student.roll_no}</td>
-                  <td>{student.name}</td>
-                  <td>{student.branch}</td>
-                  <td>{student.year}</td>
-                  <td>{student.section}</td>
-                  <td>{student.email}</td>
+          <div style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+            <table className="data-table" style={{ margin: 0 }}>
+              <thead style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Name</th>
+                  <th>Branch</th>
+                  <th>Year</th>
+                  <th>Semester</th>
+                  <th>Section</th>
+                  <th>Email</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {students.map((student) => (
+                  <tr key={student.id}>
+                    <td>{student.roll_no}</td>
+                    <td>{student.name}</td>
+                    <td>{student.branch}</td>
+                    <td>{student.year}</td>
+                    <td>{student.semester}</td>
+                    <td>{student.section}</td>
+                    <td>{student.email}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p>No students found</p>
         )}
@@ -462,9 +540,449 @@ const TeacherDashboard = () => {
         )}
       </div>
 
-      {/* Check Assignments */}
+      {/* My Created Assignments */}
       <div className="dashboard-card">
-        <h2>Check Assignments</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h2>📋 My Created Assignments</h2>
+          <span style={{ 
+            padding: '0.5rem 1rem', 
+            background: '#3b82f6', 
+            color: 'white', 
+            borderRadius: '4px',
+            fontWeight: '500'
+          }}>
+            Total: {assignmentsWithCounts.length}
+          </span>
+        </div>
+        
+        {assignmentsWithCounts.length > 0 ? (
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            {assignmentsWithCounts.map((assignment) => {
+              const submittedCount = assignment.submitted_count || 0;
+              const totalStudents = assignment.total_students || 0;
+              const pendingCount = totalStudents - submittedCount;
+              const submissionPercentage = totalStudents > 0 ? ((submittedCount / totalStudents) * 100).toFixed(0) : 0;
+              
+              return (
+                <div key={assignment.id} style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  padding: '1.5rem',
+                  background: 'white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 0.5rem 0', color: '#1f2937', fontSize: '1.25rem' }}>
+                        {assignment.title}
+                      </h3>
+                      {assignment.description && (
+                        <p style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                          {assignment.description}
+                        </p>
+                      )}
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                        {assignment.subject && (
+                          <span style={{ 
+                            padding: '0.25rem 0.75rem', 
+                            background: '#eff6ff', 
+                            color: '#3b82f6',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            fontWeight: '500'
+                          }}>
+                            📚 {assignment.subject}
+                          </span>
+                        )}
+                        {assignment.due_date && (
+                          <span style={{ 
+                            padding: '0.25rem 0.75rem', 
+                            background: '#fef3c7', 
+                            color: '#92400e',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            fontWeight: '500'
+                          }}>
+                            📅 Due: {new Date(assignment.due_date).toLocaleDateString()}
+                            {new Date(assignment.due_date) < new Date() && (
+                              <span style={{ color: '#ef4444', marginLeft: '0.5rem' }}>⚠️ Overdue</span>
+                            )}
+                          </span>
+                        )}
+                        <span style={{ 
+                          padding: '0.25rem 0.75rem', 
+                          background: '#f3f4f6', 
+                          color: '#6b7280',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          📆 Created: {new Date(assignment.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    {assignment.file_url && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${api.baseUrl}${assignment.file_url}`, {
+                              headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (!response.ok) throw new Error('Failed to download');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = assignment.file_url.split('/').pop();
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          } catch (error) {
+                            alert('Failed to download file');
+                          }
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#10b981',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        📥 Download File
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Statistics */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                    gap: '1rem',
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#f9fafb',
+                    borderRadius: '6px'
+                  }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' }}>
+                        {totalStudents}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        Total Students
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>
+                        {submittedCount}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        Submitted ✅
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+                        {pendingCount}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        Pending ⏳
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                        {submissionPercentage}%
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        Submission Rate
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div style={{ marginTop: '1rem' }}>
+                    <div style={{ 
+                      width: '100%', 
+                      height: '8px', 
+                      background: '#e5e7eb', 
+                      borderRadius: '4px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ 
+                        width: `${submissionPercentage}%`, 
+                        height: '100%', 
+                        background: submittedCount === totalStudents ? '#10b981' : '#3b82f6',
+                        transition: 'width 0.3s ease'
+                      }}></div>
+                    </div>
+                  </div>
+                  
+                  {/* Action Button */}
+                  <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => loadAssignmentSubmissions(assignment.id)}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.875rem',
+                        boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
+                      }}
+                    >
+                      👁️ View All Submissions ({submittedCount}/{totalStudents})
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '3rem', 
+            color: '#6b7280' 
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+            <p style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>No assignments created yet</p>
+            <p style={{ fontSize: '0.875rem' }}>Create your first assignment using the form above</p>
+          </div>
+        )}
+      </div>
+
+      {/* Assignment Submissions Modal */}
+      {selectedAssignment && assignmentSubmissions && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '90%',
+            maxHeight: '90%',
+            overflow: 'auto',
+            width: '800px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2>Submissions: {assignmentSubmissions.assignment.title}</h2>
+              <button
+                onClick={() => {
+                  setSelectedAssignment(null);
+                  setAssignmentSubmissions(null);
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+            {/* Assignment Details */}
+            <div style={{ marginBottom: '1.5rem', padding: '1.5rem', background: '#f3f4f6', borderRadius: '6px' }}>
+              <h3 style={{ margin: '0 0 1rem 0', color: '#1f2937' }}>Assignment Details</h3>
+              {assignmentSubmissions.assignment.description && (
+                <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', lineHeight: '1.5' }}>
+                  <strong>Description:</strong> {assignmentSubmissions.assignment.description}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+                {assignmentSubmissions.assignment.subject && (
+                  <span style={{ 
+                    padding: '0.5rem 1rem', 
+                    background: '#eff6ff', 
+                    color: '#3b82f6',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}>
+                    📚 {assignmentSubmissions.assignment.subject}
+                  </span>
+                )}
+                {assignmentSubmissions.assignment.due_date && (
+                  <span style={{ 
+                    padding: '0.5rem 1rem', 
+                    background: '#fef3c7', 
+                    color: '#92400e',
+                    borderRadius: '4px',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}>
+                    📅 Due: {new Date(assignmentSubmissions.assignment.due_date).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#1f2937' }}>
+                    {assignmentSubmissions.total_students}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Total Students</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>
+                    {assignmentSubmissions.submitted_count}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Submitted ✅</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444' }}>
+                    {assignmentSubmissions.pending_count}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Pending ⏳</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                    {assignmentSubmissions.total_students > 0 
+                      ? ((assignmentSubmissions.submitted_count / assignmentSubmissions.total_students) * 100).toFixed(0) 
+                      : 0}%
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>Submission Rate</div>
+                </div>
+              </div>
+            </div>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Roll No</th>
+                  <th>Student Name</th>
+                  <th>Year</th>
+                  <th>Status</th>
+                  <th>Submission Date</th>
+                  <th>Marks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignmentSubmissions.submissions.map((submission) => (
+                  <tr key={submission.student_id}>
+                    <td>{submission.roll_no}</td>
+                    <td>{submission.student_name}</td>
+                    <td>{submission.year}</td>
+                    <td>
+                      {submission.is_submitted ? (
+                        <span style={{ color: '#10b981', fontWeight: '500' }}>✅ Submitted</span>
+                      ) : (
+                        <span style={{ color: '#ef4444', fontWeight: '500' }}>⏳ Pending</span>
+                      )}
+                    </td>
+                    <td>{submission.submission_date ? new Date(submission.submission_date).toLocaleDateString() : '-'}</td>
+                    <td>
+                      <input
+                        type="number"
+                        placeholder="Marks"
+                        defaultValue={submission.marks || ''}
+                        id={`submission-marks-${submission.student_id}`}
+                        style={{ width: '80px', padding: '0.25rem' }}
+                      />
+                    </td>
+                    <td>
+                      {submission.is_submitted && submission.file_url && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`${api.baseUrl}${submission.file_url}`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              });
+                              if (!response.ok) throw new Error('Failed to download');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = submission.file_url.split('/').pop();
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            } catch (error) {
+                              alert('Failed to download file');
+                            }
+                          }}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            marginRight: '0.5rem',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          📥 Download
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          const marks = document.getElementById(`submission-marks-${submission.student_id}`).value;
+                          const feedback = document.getElementById(`submission-feedback-${submission.student_id}`)?.value || '';
+                          // Update submission marks/feedback
+                          try {
+                            const response = await fetch(api.teacher.updateAssignment, {
+                              method: 'PUT',
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                              },
+                              body: JSON.stringify({
+                                assignment_id: selectedAssignment,
+                                student_id: submission.student_id,
+                                marks: marks ? parseInt(marks) : null,
+                                feedback: feedback
+                              })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                              alert('Marks updated!');
+                              loadAssignmentSubmissions(selectedAssignment);
+                            }
+                          } catch (error) {
+                            alert('Failed to update marks');
+                          }
+                        }}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          background: '#10b981',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        Update
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Check Assignments (Old - for student-submitted assignments) */}
+      <div className="dashboard-card">
+        <h2>Check Student-Submitted Assignments</h2>
         {assignments.length > 0 ? (
           <div className="assignments-list">
             {assignments.map((assignment) => (
@@ -698,22 +1216,47 @@ const TeacherDashboard = () => {
               <option key={s.id} value={s.id}>{s.name} ({s.roll_no})</option>
             ))}
           </select>
-          <input
-            type="number"
-            placeholder="Semester (e.g., 3, 4, 5)"
+          <select
             value={marksForm.semester}
-            onChange={(e) => setMarksForm({ ...marksForm, semester: e.target.value })}
+            onChange={(e) => setMarksForm({ ...marksForm, semester: e.target.value, subject: '' })}
             required
-            min="1"
-            max="8"
-          />
-          <input
-            type="text"
-            placeholder="Subject Name"
-            value={marksForm.subject}
-            onChange={(e) => setMarksForm({ ...marksForm, subject: e.target.value })}
-            required
-          />
+          >
+            <option value="">Select Semester</option>
+            <option value="1">1st Semester</option>
+            <option value="2">2nd Semester</option>
+            <option value="3">3rd Semester</option>
+            <option value="4">4th Semester</option>
+            <option value="5">5th Semester</option>
+            <option value="6">6th Semester</option>
+          </select>
+          {marksForm.semester && subjects.length > 0 ? (
+            <select
+              value={marksForm.subject}
+              onChange={(e) => setMarksForm({ ...marksForm, subject: e.target.value })}
+              required
+            >
+              <option value="">Select Subject</option>
+              {subjects.map(sub => (
+                <option key={sub.id} value={sub.subject_name}>
+                  {sub.subject_code} - {sub.subject_name}
+                </option>
+              ))}
+            </select>
+          ) : marksForm.semester ? (
+            <input
+              type="text"
+              placeholder="Subject Name (or type manually)"
+              value={marksForm.subject}
+              onChange={(e) => setMarksForm({ ...marksForm, subject: e.target.value })}
+              required
+            />
+          ) : (
+            <input
+              type="text"
+              placeholder="Select Semester First"
+              disabled
+            />
+          )}
           <input
             type="number"
             placeholder="Marks Obtained"

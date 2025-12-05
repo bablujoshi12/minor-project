@@ -147,14 +147,14 @@ const Home = () => {
 
   const [gallery, setGallery] = useState(defaultGallery);
 
-  // Default Features Data (Fallback)
+  // Default Features Data (Fallback) - No portal mentions, no clickable links
   const defaultFeatures = [
     { icon: '📚', title: 'Quality Education', description: 'Industry-relevant curriculum with hands-on training for real-world success.', bg: 'linear-gradient(135deg, #667eea, #764ba2)' },
     { icon: '💼', title: 'Placement Support', description: '55% placement success rate with top companies and dedicated placement cell.', bg: 'linear-gradient(135deg, #10b981, #059669)' },
     { icon: '🏗️', title: 'Modern Labs', description: 'State-of-the-art laboratories with latest equipment and technology.', bg: 'linear-gradient(135deg, #f59e0b, #d97706)' },
     { icon: '🎓', title: 'Expert Faculty', description: 'Experienced faculty from industry and academia with proven track record.', bg: 'linear-gradient(135deg, #3b82f6, #2563eb)' },
-    { icon: '🌐', title: '24/7 Digital Library', description: 'Access thousands of e-books and journals online anytime.', bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', link: 'https://engineering.library.cornell.edu/e-book-collections/' },
-    { icon: '🚀', title: 'Innovation Hub', description: 'Cutting-edge research facilities and innovation centers.', bg: 'linear-gradient(135deg, #ef4444, #dc2626)' }
+    { icon: '📖', title: 'Digital Library', description: 'Access thousands of e-books and journals online anytime, anywhere.', bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)' },
+    { icon: '🚀', title: 'Innovation Hub', description: 'Cutting-edge research facilities and innovation centers for students.', bg: 'linear-gradient(135deg, #ef4444, #dc2626)' }
   ];
 
   // Placement Details (can be added to database later if needed)
@@ -261,9 +261,19 @@ const Home = () => {
               setDepartments(defaultDepartments);
             }
             
-            // Set features
+            // Set features - filter out portal-related content and invalid icons
             if (apiData.data.features && Array.isArray(apiData.data.features) && apiData.data.features.length > 0) {
-              setFeatures(apiData.data.features);
+              const filteredFeatures = apiData.data.features
+                .filter(f => 
+                  !f.title?.toLowerCase().includes('portal') && 
+                  !f.description?.toLowerCase().includes('portal') &&
+                  f.icon && !f.icon.includes('?') && f.icon.trim() !== ''
+                )
+                .map(f => ({
+                  ...f,
+                  icon: f.icon || '✨' // Ensure valid icon
+                }));
+              setFeatures(filteredFeatures.length > 0 ? filteredFeatures : defaultFeatures);
             } else {
               setFeatures(defaultFeatures);
             }
@@ -304,7 +314,18 @@ const Home = () => {
         if (featResponse.ok) {
           const featData = await featResponse.json();
           if (featData.success && featData.data && featData.data.length > 0) {
-            setFeatures(featData.data);
+            // Filter out portal-related content and invalid icons
+            const filteredFeatures = featData.data
+              .filter(f => 
+                !f.title?.toLowerCase().includes('portal') && 
+                !f.description?.toLowerCase().includes('portal') &&
+                f.icon && !f.icon.includes('?') && f.icon.trim() !== ''
+              )
+              .map(f => ({
+                ...f,
+                icon: f.icon || '✨' // Ensure valid icon
+              }));
+            setFeatures(filteredFeatures.length > 0 ? filteredFeatures : defaultFeatures);
           } else {
             setFeatures(defaultFeatures);
           }
@@ -409,6 +430,8 @@ const Home = () => {
                     src={src} 
                     alt={`GPL Lohaghat Campus Photo ${i+1}`} 
                     loading="lazy"
+                    crossOrigin="anonymous"
+                    referrerPolicy="no-referrer"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => { 
                       // Fallback for failed image load
@@ -497,28 +520,16 @@ const Home = () => {
             <p className="section-desc-smart">State-of-the-art facilities designed for student success</p>
           </div>
           <div className="features-grid-smart">
-            {(features.length > 0 ? features : defaultFeatures).map((feature, idx) => {
-              if (feature.link) {
-                return (
-                  <a
-                    key={idx}
-                    href={feature.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="feature-card-smart clickable"
-                    style={{ background: feature.bg }}
-                  >
-                    <div className="feature-icon-smart">{feature.icon}</div>
-                    <h3>{feature.title}</h3>
-                    <p>{feature.description}</p>
-                    <span className="feature-link-hint">Click to access →</span>
-                  </a>
-                );
-              }
+            {(features.length > 0 ? features.filter(f => !f.title?.toLowerCase().includes('portal') && !f.description?.toLowerCase().includes('portal')) : defaultFeatures.filter(f => !f.title?.toLowerCase().includes('portal') && !f.description?.toLowerCase().includes('portal'))).map((feature, idx) => {
+              // Remove all clickable links - just display cards
+              // Ensure icon is valid - filter out question marks or invalid icons
+              const validIcon = feature.icon && !feature.icon.includes('?') && feature.icon.trim() !== '' 
+                ? feature.icon 
+                : '✨'; // Default fallback icon
               
               return (
                 <div key={idx} className="feature-card-smart" style={{ background: feature.bg }}>
-                  <div className="feature-icon-smart">{feature.icon}</div>
+                  <div className="feature-icon-smart">{validIcon}</div>
                   <h3>{feature.title}</h3>
                   <p>{feature.description}</p>
                 </div>
